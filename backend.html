@@ -9,7 +9,7 @@
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f4f8; min-height: 100vh; padding: 20px; }
   .header { background: #1a5276; color: white; padding: 20px 24px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
   .header h1 { font-size: 18px; font-weight: 600; }
-  .header .badge { background: #e74c3c; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+  .badge { background: #e74c3c; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
   .stat-card { background: white; padding: 16px; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
   .stat-card .num { font-size: 28px; font-weight: 700; }
@@ -21,7 +21,7 @@
   .panel h2 { font-size: 16px; color: #2c3e50; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f4f8; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { background: #f8fafb; padding: 10px 8px; text-align: left; color: #7f8c8d; font-weight: 600; font-size: 12px; }
-  td { padding: 10px 8px; border-bottom: 1px solid #f0f4f8; color: #2c3e50; }
+  td { padding: 10px 8px; border-bottom: 1px solid #f0f4f8; color: #2c3e50; vertical-align: middle; }
   .score { font-weight: 700; padding: 3px 10px; border-radius: 6px; font-size: 13px; }
   .score.pass { background: #e8f8f0; color: #27ae60; }
   .score.fail { background: #fde8e8; color: #e74c3c; }
@@ -29,8 +29,15 @@
   .tag.male { background: #e8f0fe; color: #2980b9; }
   .tag.overtime { background: #fef9e7; color: #f39c12; }
   .tag.exp { background: #e8f8f0; color: #27ae60; }
+  .tag.cert { background: #e8f0fe; color: #2980b9; }
+  .cert-thumb { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; cursor: pointer; vertical-align: middle; }
   .empty { text-align: center; padding: 40px; color: #bdc3c7; }
   .empty p { font-size: 14px; margin-top: 8px; }
+  /* Modal for cert photo */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
+  .modal-overlay.show { display: flex; }
+  .modal-overlay img { max-width: 90%; max-height: 90%; border-radius: 12px; }
+  .modal-close { position: fixed; top: 20px; right: 20px; color: white; font-size: 32px; cursor: pointer; z-index: 1001; }
 </style>
 </head>
 <body>
@@ -40,21 +47,36 @@
 </div>
 <div class="stats">
   <div class="stat-card green"><div class="num" id="passNum">0</div><div class="label">通过 (≥60分)</div></div>
-  <div class="stat-card red"><div class="num" id="failNum">0</div><div class="label">未通过 (&lt;60分)</div></div>
+  <div class="stat-card red"><div class="num" id="failNum">0</div><div class="label">未通过 (<60分)</div></div>
   <div class="stat-card orange"><div class="num" id="todayNum">0</div><div class="label">今日面试</div></div>
 </div>
 <div class="panel">
   <h2>📋 面试记录</h2>
   <table>
     <thead>
-      <tr><th>姓名</th><th>年龄/性别</th><th>经验</th><th>居住地</th><th>到岗</th><th>评分</th><th>结果</th></tr>
+      <tr><th>姓名</th><th>年龄/性别</th><th>经验</th><th>居住地</th><th>到岗</th><th>叉车证</th><th>评分</th><th>结果</th></tr>
     </thead>
     <tbody id="records">
-      <tr><td colspan="7" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>
+      <tr><td colspan="8" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>
     </tbody>
   </table>
 </div>
+
+<!-- Modal for cert photo preview -->
+<div class="modal-overlay" id="certModal" onclick="closeModal()">
+  <span class="modal-close">&times;</span>
+  <img id="certModalImg" src="" alt="叉车证照片">
+</div>
+
 <script>
+function openModal(src) {
+  document.getElementById('certModalImg').src = src;
+  document.getElementById('certModal').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('certModal').classList.remove('show');
+}
+
 function loadRecords() {
   const records = [];
   for (let i = 0; i < localStorage.length; i++) {
@@ -70,7 +92,7 @@ function loadRecords() {
   
   const tbody = document.getElementById('records');
   if (records.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>';
   } else {
     tbody.innerHTML = '';
     records.forEach(r => {
@@ -84,30 +106,51 @@ function loadRecords() {
       const arrival = a.q7?.answer || '-';
       const location = a.q8?.answer || '-';
       const health = a.q9?.answer || '-';
+      const forklift = a.q10?.answer || '-';
       
-      // Calculate score
-      let score = 0;
+      // Check hard conditions
       const isMale = gender.includes('男');
       const ageNum = parseInt(age);
       const ageOk = !isNaN(ageNum) && ageNum <= 30;
       const noTattoo = !tattoo.includes('有');
       
+      let score = 0;
+      
       if (noTattoo && isMale && ageOk) {
+        // 接受加班：+15
         if (overtime.includes('能') || overtime.includes('可以') || overtime.includes('接受')) score += 15;
+        // 有相关经验：+15
         if (exp.length > 2) score += 15;
-        if (isMale) score += 10;
-        if (ageOk) score += 10;
+        // 表达清晰：+10
+        score += 10;
+        // 一星期内到岗：+10
+        if (arrival.includes('一星期') || arrival.includes('一周') || arrival.includes('随时') || arrival.includes('立即') || arrival.includes('马上')) score += 10;
+        // 居住地评分
         if (location.includes('秀洲')) score += 15;
         else if (location.includes('嘉兴')) score += 10;
-        if (arrival.includes('一星期') || arrival.includes('一周') || arrival.includes('随时') || arrival.includes('立即')) score += 10;
+        // 年龄不超过30岁：+10
+        if (ageOk) score += 10;
+        // 性别男：+10
+        score += 10;
+        // 身体健康：+15
         if (health.includes('健康') || health.includes('是') || health.includes('没有') || health.includes('无')) score += 15;
-        score += 10; // expression clarity base
       } else {
+        // 不符合硬性条件，直接59分以下
         score = 55;
       }
       
       if (score >= 60) pass++; else fail++;
       if (r.timestamp.startsWith(todayStr)) today++;
+      
+      // Forklift certificate display
+      let certHtml = '';
+      if (forklift === '有' && r.certPhoto) {
+        certHtml = `<img class="cert-thumb" src="${r.certPhoto}" onclick="openModal('${r.certPhoto}')" title="点击查看证书">`;
+      } else if (forklift === '有') {
+        certHtml = '<span class="tag cert">有</span>';
+      } else {
+        certHtml = '<span style="color:#bdc3c7">无</span>';
+      }
       
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -116,6 +159,7 @@ function loadRecords() {
         <td><span class="tag exp">${exp.length > 4 ? exp.slice(0, 4) + '...' : exp}</span></td>
         <td>${location}</td>
         <td>${arrival}</td>
+        <td>${certHtml}</td>
         <td><span class="score ${score >= 60 ? 'pass' : 'fail'}">${score}分</span></td>
         <td><span class="score ${score >= 60 ? 'pass' : 'fail'}">${score >= 60 ? '通过' : '未通过'}</span></td>
       `;
@@ -130,7 +174,6 @@ function loadRecords() {
 }
 
 loadRecords();
-// Auto refresh every 10s
 setInterval(loadRecords, 10000);
 </script>
 </body>

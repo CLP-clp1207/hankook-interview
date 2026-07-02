@@ -113,14 +113,32 @@ function askNext() {
   }
 }
 
+function compressImage(dataUrl, maxDim, quality, cb) {
+  const img = new Image();
+  img.onload = function() {
+    let w = img.width, h = img.height;
+    if (w > maxDim || h > maxDim) {
+      if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+      else { w = Math.round(w * maxDim / h); h = maxDim; }
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    cb(canvas.toDataURL('image/jpeg', quality));
+  };
+  img.src = dataUrl;
+}
+
 function handleUpload(input) {
   const file = input.files[0];
   if (!file) return;
   document.getElementById('fileName').textContent = `已选择: ${file.name}`;
   const reader = new FileReader();
   reader.onload = function(e) {
-    certPhoto = e.target.result;
-    document.getElementById('submitHint').style.display = 'block';
+    compressImage(e.target.result, 800, 0.6, function(compressed) {
+      certPhoto = compressed;
+      document.getElementById('submitHint').style.display = 'block';
+    });
   };
   reader.readAsDataURL(file);
 }
@@ -140,13 +158,21 @@ async function finishInterview() {
   }
 
   try {
-    // Fetch current data
+    // Fetch current data metadata
     const resp = await fetch(GITHUB_API, {
       headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
     });
     const currentData = await resp.json();
     const sha = currentData.sha;
-    const decoded = JSON.parse(atob(currentData.content));
+    
+    // Get content - if file > 1MB, API returns empty content, use raw URL instead
+    let decoded;
+    if (currentData.content && currentData.content.length > 0) {
+      decoded = JSON.parse(atob(currentData.content));
+    } else {
+      const rawResp = await fetch('https://raw.githubusercontent.com/CLP-clp1207/hankook-interview/main/data.json?t=' + Date.now());
+      decoded = await rawResp.json();
+    }
     
     // Add new record
     decoded.records.push(result);

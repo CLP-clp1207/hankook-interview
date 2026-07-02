@@ -130,17 +130,15 @@ function calcScore(a) {
 
 async function loadRecords() {
   try {
-    const resp = await fetch(GITHUB_API, {
-      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
-    });
+    // Use raw URL to avoid 1MB API limit (photos can bloat the file)
+    const resp = await fetch('https://raw.githubusercontent.com/CLP-clp1207/hankook-interview/main/data.json?t=' + Date.now());
     
     if (!resp.ok) {
       document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
       return;
     }
     
-    const fileData = await resp.json();
-    const data = JSON.parse(atob(fileData.content));
+    const data = await resp.json();
     const records = data.records || [];
     
     let pass = 0, fail = 0, today = 0;

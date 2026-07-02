@@ -130,15 +130,28 @@ function calcScore(a) {
 
 async function loadRecords() {
   try {
-    // Use raw URL to avoid 1MB API limit (photos can bloat the file)
-    const resp = await fetch('https://raw.githubusercontent.com/CLP-clp1207/hankook-interview/main/data.json?t=' + Date.now());
+    // Try GitHub API first (no CDN cache), fallback to raw URL
+    let data;
+    try {
+      const apiResp = await fetch(GITHUB_API + '?t=' + Date.now(), {
+        headers: { 'Authorization': 'token ' + GITHUB_TOKEN }
+      });
+      if (apiResp.ok) {
+        const apiData = await apiResp.json();
+        if (apiData.content) {
+          data = JSON.parse(atob(apiData.content));
+        }
+      }
+    } catch(e) { /* API failed, try raw URL */ }
     
-    if (!resp.ok) {
-      document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
-      return;
+    if (!data) {
+      const rawResp = await fetch('https://raw.githubusercontent.com/CLP-clp1207/hankook-interview/main/data.json?t=' + Date.now());
+      if (!rawResp.ok) {
+        document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
+        return;
+      }
+      data = await rawResp.json();
     }
-    
-    const data = await resp.json();
     const records = data.records || [];
     
     let pass = 0, fail = 0, today = 0;

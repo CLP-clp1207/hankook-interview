@@ -47,6 +47,7 @@
   .detail-score { font-size: 18px; font-weight: 700; margin-top: 12px; padding: 8px 16px; border-radius: 8px; display: inline-block; }
   .detail-score.pass { background: #e8f8f0; color: #27ae60; }
   .detail-score.fail { background: #fde8e8; color: #e74c3c; }
+  .refresh-info { font-size: 11px; color: #bdc3c7; text-align: right; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -69,6 +70,7 @@
       <tr><td colspan="8" class="loading">加载中...</td></tr>
     </tbody>
   </table>
+  <div class="refresh-info" id="refreshInfo">自动刷新中...</div>
 </div>
 <div class="detail-panel" id="detailPanel">
   <h2>📝 面试详情</h2>
@@ -85,7 +87,7 @@
 <script>
 const _g=['gh','p_a','uKb','YXI','FGV','mlS','ZlH','698','gIu','Opb','5CX','d92','8L8','Dx'];const GITHUB_TOKEN=_g.join('');
 const GITHUB_REPO = 'CLP-clp1207/hankook-interview';
-const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/contents/data.json`;
+const RECORDS_API = `https://api.github.com/repos/${GITHUB_REPO}/contents/records`;
 
 function openModal(src, info) {
   document.getElementById('certModalImg').src = src;
@@ -94,6 +96,13 @@ function openModal(src, info) {
 }
 function closeModal() {
   document.getElementById('certModal').classList.remove('show');
+}
+
+function decodeBase64UTF8(b64content) {
+  const binaryStr = atob(b64content);
+  const bytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) { bytes[i] = binaryStr.charCodeAt(i); }
+  return new TextDecoder('utf-8').decode(bytes);
 }
 
 function calcScore(a) {
@@ -130,97 +139,133 @@ function calcScore(a) {
 
 async function loadRecords() {
   try {
-    // Try GitHub API first (no CDN cache), fallback to raw URL
-    let data;
-    try {
-      const apiResp = await fetch(GITHUB_API + '?t=' + Date.now(), {
-        headers: { 'Authorization': 'token ' + GITHUB_TOKEN }
-      });
-      if (apiResp.ok) {
-        const apiData = await apiResp.json();
-        if (apiData.content) {
-          const _binStr = atob(apiData.content);
-          const _bytes = new Uint8Array(_binStr.length);
-          for (let _i = 0; _i < _binStr.length; _i++) { _bytes[_i] = _binStr.charCodeAt(_i); }
-          data = JSON.parse(new TextDecoder('utf-8').decode(_bytes));
-        }
-      }
-    } catch(e) { /* API failed, try raw URL */ }
+    // Step 1: List all files in records/ directory
+    const listResp = await fetch(RECORDS_API + '?t=' + Date.now(), {
+      headers: { 'Authorization': 'token ' + GITHUB_TOKEN, 'Accept': 'application/vnd.github.v3+json' }
+    });
     
-    if (!data) {
-      const rawResp = await fetch('https://raw.githubusercontent.com/CLP-clp1207/hankook-interview/main/data.json?t=' + Date.now());
-      if (!rawResp.ok) {
-        document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
-        return;
-      }
-      data = await rawResp.json();
+    if (!listResp.ok) {
+      document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
+      return;
     }
-    const records = data.records || [];
+    
+    const fileList = await listResp.json();
+    
+    // Filter only .json files
+    const jsonFiles = fileList.filter(f => f.name.endsWith('.json'));
+    
+    if (jsonFiles.length === 0) {
+      document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>';
+      document.getElementById('passNum').textContent = '0';
+      document.getElementById('failNum').textContent = '0';
+      document.getElementById('todayNum').textContent = '0';
+      document.getElementById('totalBadge').textContent = '共 0 人';
+      return;
+    }
+    
+    // Step 2: Read each file's content
+    const records = [];
+    for (const file of jsonFiles) {
+      try {
+        // The API response for a directory listing includes download_url and content may not be included
+        // We need to fetch each file individually
+        let record;
+        
+        if (file.content) {
+          // Content is included in the directory listing response
+          const text = decodeBase64UTF8(file.content);
+          record = JSON.parse(text);
+        } else {
+          // Need to fetch individual file
+          const fileResp = await fetch(file.url || (`https://api.github.com/repos/${GITHUB_REPO}/contents/records/${file.name}`), {
+            headers: { 'Authorization': 'token ' + GITHUB_TOKEN, 'Accept': 'application/vnd.github.v3+json' }
+          });
+          if (fileResp.ok) {
+            const fileData = await fileResp.json();
+            if (fileData.content) {
+              const text = decodeBase64UTF8(fileData.content);
+              record = JSON.parse(text);
+            }
+          }
+        }
+        
+        if (record) {
+          records.push(record);
+        }
+      } catch (e) {
+        console.error('Failed to read record:', file.name, e);
+      }
+    }
+    
+    // Sort by timestamp (newest first)
+    records.sort((a, b) => {
+      if (a.timestamp && b.timestamp) {
+        return b.timestamp.localeCompare(a.timestamp);
+      }
+      return 0;
+    });
     
     let pass = 0, fail = 0, today = 0;
     const todayStr = new Date().toISOString().slice(0, 10);
     
     const tbody = document.getElementById('records');
-    if (records.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>';
-    } else {
-      tbody.innerHTML = '';
-      const sorted = [...records].reverse(); // newest first
+    tbody.innerHTML = '';
+    
+    records.forEach((r) => {
+      const a = r.answers;
+      const name = a.q1?.answer || '-';
+      const age = a.q2?.answer || '-';
+      const gender = a.q3?.answer || '-';
+      const exp = a.q4?.answer || '-';
+      const overtime = a.q5?.answer || '-';
+      const tattoo = a.q6?.answer || '-';
+      const arrival = a.q7?.answer || '-';
+      const location = a.q8?.answer || '-';
+      const health = a.q9?.answer || '-';
+      const forklift = a.q10?.answer || '-';
       
-      sorted.forEach((r, idx) => {
-        const a = r.answers;
-        const name = a.q1?.answer || '-';
-        const age = a.q2?.answer || '-';
-        const gender = a.q3?.answer || '-';
-        const exp = a.q4?.answer || '-';
-        const overtime = a.q5?.answer || '-';
-        const tattoo = a.q6?.answer || '-';
-        const arrival = a.q7?.answer || '-';
-        const location = a.q8?.answer || '-';
-        const health = a.q9?.answer || '-';
-        const forklift = a.q10?.answer || '-';
-        
-        const score = calcScore(a);
-        if (score >= 60) pass++; else fail++;
-        if (r.timestamp && r.timestamp.startsWith(todayStr)) today++;
-        
-        // Forklift certificate display
-        let certHtml = '';
-        if (forklift.includes('有') && r.certPhoto) {
-          certHtml = `<img class="cert-thumb" src="${r.certPhoto}" onclick="event.stopPropagation();openModal('${r.certPhoto}','${name} 的叉车证')" title="点击查看证书">`;
-        } else if (forklift.includes('有')) {
-          certHtml = '<span class="tag cert">有</span>';
-        } else {
-          certHtml = '<span style="color:#bdc3c7">无</span>';
-        }
-        
-        const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
-        tr.onclick = function() { showDetail(r, score); };
-        tr.innerHTML = `
-          <td><strong>${name}</strong></td>
-          <td>${age}岁/${gender}</td>
-          <td>${exp.length > 6 ? exp.slice(0, 6) + '...' : exp}</td>
-          <td>${location}</td>
-          <td>${arrival}</td>
-          <td>${certHtml}</td>
-          <td><span class="score ${score >= 60 ? 'pass' : 'fail'}">${score}分</span></td>
-          <td><span class="score ${score >= 60 ? 'pass' : 'fail'}">${score >= 60 ? '通过' : '未通过'}</span></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
+      const score = calcScore(a);
+      if (score >= 60) pass++; else fail++;
+      if (r.timestamp && r.timestamp.startsWith(todayStr)) today++;
+      
+      // Forklift certificate display
+      let certHtml = '';
+      if (forklift.includes('有') && r.certPhoto) {
+        const safeName = name.replace(/'/g, "\\'");
+        certHtml = `<img class="cert-thumb" src="${r.certPhoto}" onclick="event.stopPropagation();openModal(this.src,'${safeName} 的叉车证')" title="点击查看证书">`;
+      } else if (forklift.includes('有')) {
+        certHtml = '<span class="tag cert">有</span>';
+      } else {
+        certHtml = '<span style="color:#bdc3c7">无</span>';
+      }
+      
+      const tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      tr.onclick = function() { showDetail(r, score); };
+      tr.innerHTML = `
+        <td><strong>${name}</strong></td>
+        <td>${age}岁/${gender}</td>
+        <td>${exp.length > 6 ? exp.slice(0, 6) + '...' : exp}</td>
+        <td>${location}</td>
+        <td>${arrival}</td>
+        <td>${certHtml}</td>
+        <td><span class="score ${score >= 60 ? 'pass' : 'fail'}">${score}分</span></td>
+        <td><span class="score ${score >= 60 ? 'pass' : 'fail'}">${score >= 60 ? '通过' : '未通过'}</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
     
     document.getElementById('passNum').textContent = pass;
     document.getElementById('failNum').textContent = fail;
     document.getElementById('todayNum').textContent = today;
     document.getElementById('totalBadge').textContent = `共 ${records.length} 人`;
     
-    // Update today count color
-    if (today > 0) {
-      document.getElementById('todayNum').style.color = '#f39c12';
-    }
+    // Update refresh info
+    const now = new Date();
+    document.getElementById('refreshInfo').textContent = `上次刷新：${now.toLocaleTimeString('zh-CN')} · 每10秒自动刷新`;
+    
   } catch (e) {
+    console.error('Load error:', e);
     document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
   }
 }
@@ -251,7 +296,7 @@ function showDetail(record, score) {
   
   // Cert photo
   if (a.q10?.answer.includes('有') && record.certPhoto) {
-    html += `<div class="detail-row"><div class="detail-label">叉车证照片</div><div class="detail-value"><img src="${record.certPhoto}" style="max-width:300px;border-radius:8px;cursor:pointer" onclick="openModal('${record.certPhoto}','叉车证照片')"></div></div>`;
+    html += `<div class="detail-row"><div class="detail-label">叉车证照片</div><div class="detail-value"><img src="${record.certPhoto}" style="max-width:300px;border-radius:8px;cursor:pointer" onclick="openModal(this.src,'叉车证照片')"></div></div>`;
   }
   
   // Score

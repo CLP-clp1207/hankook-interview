@@ -56,9 +56,9 @@
   <div class="submit-hint" id="submitHint">✅ 照片已上传，点击发送提交</div>
 </div>
 <script>
-const _g=['gh','p_a','uKb','YXI','FGV','mlS','ZlH','698','gIu','Opb','5CX','d92','8L8','Dx'];const GITHUB_TOKEN=_g.join('');
+const _g=['gh','p_a','uKb','YXI','FGV','mlS','ZlH','698','gIu','Opb','5CX','d92','8L8','Dx'];
+const GITHUB_TOKEN=_g.join('');
 const GITHUB_REPO = 'CLP-clp1207/hankook-interview';
-const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/contents/data.json`;
 
 const TOTAL = 10;
 const questions = [
@@ -149,7 +149,16 @@ async function finishInterview() {
   document.getElementById('submitHint').style.display = 'none';
   document.getElementById('progress').innerText = '正在提交...';
   
-  const result = { timestamp: new Date().toISOString(), answers: {} };
+  const now = new Date();
+  const timestamp = now.toISOString();
+  
+  // Generate unique filename: YYYYMMDD_HHmmss_SSS
+  const dateStr = timestamp.slice(0, 10).replace(/-/g, '');
+  const timeStr = timestamp.slice(11, 19).replace(/:/g, '');
+  const msStr = timestamp.slice(20, 23);
+  const fileName = `${dateStr}_${timeStr}_${msStr}.json`;
+  
+  const result = { timestamp: timestamp, answers: {} };
   questions.forEach((q, i) => {
     result.answers['q' + (i+1)] = { question: q, answer: answers[i] };
   });
@@ -158,49 +167,43 @@ async function finishInterview() {
   }
 
   try {
-    // Fetch current data metadata
-    const resp = await fetch(GITHUB_API, {
-      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
-    });
-    const currentData = await resp.json();
-    const sha = currentData.sha;
+    // Create individual record file in records/ directory via GitHub API PUT
+    const apiPath = `records/${fileName}`;
+    const api = `https://api.github.com/repos/${GITHUB_REPO}/contents/${apiPath}`;
+    const contentStr = JSON.stringify(result);
+    const encodedContent = btoa(unescape(encodeURIComponent(contentStr)));
     
-    // Get content - if file > 1MB, API returns empty content, use raw URL instead
-    let decoded;
-    if (currentData.content && currentData.content.length > 0) {
-      const binaryStr = atob(currentData.content);
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let _i = 0; _i < binaryStr.length; _i++) { bytes[_i] = binaryStr.charCodeAt(_i); }
-      decoded = JSON.parse(new TextDecoder('utf-8').decode(bytes));
-    } else {
-      const rawResp = await fetch('https://raw.githubusercontent.com/CLP-clp1207/hankook-interview/main/data.json?t=' + Date.now());
-      decoded = await rawResp.json();
-    }
-    
-    // Add new record
-    decoded.records.push(result);
-    
-    // Update file
-    const newContent = btoa(unescape(encodeURIComponent(JSON.stringify(decoded))));
-    await fetch(GITHUB_API, {
+    const createResp = await fetch(api, {
       method: 'PUT',
-      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
         message: `Add interview: ${answers[0] || 'unknown'}`,
-        content: newContent,
-        sha: sha
+        content: encodedContent
       })
     });
+    
+    if (!createResp.ok) {
+      const errData = await createResp.json();
+      console.error('GitHub API error:', errData);
+      throw new Error('Failed to create record: ' + (errData.message || createResp.status));
+    }
     
     document.getElementById('progress').innerText = '面试完成 ✅';
     document.getElementById('progressFill').style.width = '100%';
     addMsg("感谢您参加本次面试！如果通过，会有后续负责人与您联系。祝您好运！😊", true);
   } catch (e) {
+    console.error('Submit error:', e);
     document.getElementById('progress').innerText = '面试完成';
     document.getElementById('progressFill').style.width = '100%';
     addMsg("感谢您参加本次面试！如果通过，会有后续负责人与您联系。祝您好运！😊", true);
     // Fallback: save locally if GitHub fails
-    localStorage.setItem('hankook_interview_' + Date.now(), JSON.stringify(result));
+    try {
+      localStorage.setItem('hankook_interview_' + Date.now(), JSON.stringify(result));
+    } catch(ex) { /* ignore */ }
   }
 }
 

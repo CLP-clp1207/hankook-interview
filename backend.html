@@ -139,7 +139,10 @@ async function loadRecords() {
       if (apiResp.ok) {
         const apiData = await apiResp.json();
         if (apiData.content) {
-          data = JSON.parse(atob(apiData.content));
+          const _binStr = atob(apiData.content);
+          const _bytes = new Uint8Array(_binStr.length);
+          for (let _i = 0; _i < _binStr.length; _i++) { _bytes[_i] = _binStr.charCodeAt(_i); }
+          data = JSON.parse(new TextDecoder('utf-8').decode(_bytes));
         }
       }
     } catch(e) { /* API failed, try raw URL */ }

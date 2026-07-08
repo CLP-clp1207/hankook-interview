@@ -56,8 +56,7 @@
   <div class="submit-hint" id="submitHint">✅ 照片已上传，点击发送提交</div>
 </div>
 <script>
-const _g=['gh','p_a','uKb','YXI','FGV','mlS','ZlH','698','gIu','Opb','5CX','d92','8L8','Dx'];
-const GITHUB_TOKEN=_g.join('');
+const _g=['gh','p_a','uKb','YXI','FGV','mlS','ZlH','698','gIu','Opb','5CX','d92','8L8','Dx'];const GITHUB_TOKEN=_g.join('');
 const GITHUB_REPO = 'CLP-clp1207/hankook-interview';
 
 const TOTAL = 10;
@@ -216,7 +215,7 @@ function submitAnswer() {
   input.value = '';
 
   // If answering question 10 with "有", show photo preview then proceed
-  if (current === 9 && val.includes('有')) {
+  if (current === 9 && val.includes('有') && !val.includes('没有')) {
     if (certPhoto) {
       addPhotoMsg(certPhoto, document.getElementById('fileName').textContent.replace('已选择: ', ''));
     }

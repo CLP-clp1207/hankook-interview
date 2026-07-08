@@ -242,15 +242,26 @@ async function loadRecords() {
       const tr = document.createElement('tr');
       tr.style.cursor = 'pointer';
       tr.onclick = function() { showDetail(r, score); };
-      // Interview time formatting
+      // Interview time formatting - 中文直观格式
       let timeHtml = '-';
       if (r.timestamp) {
         const d = new Date(r.timestamp);
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
+        const month = d.getMonth() + 1;
+        const day = d.getDate();
         const hh = String(d.getHours()).padStart(2, '0');
         const mi = String(d.getMinutes()).padStart(2, '0');
-        timeHtml = `${mm}-${dd} ${hh}:${mi}`;
+        const weekdays = ['日','一','二','三','四','五','六'];
+        const wd = weekdays[d.getDay()];
+        // 判断今天/昨天/前天
+        const today0 = new Date(); today0.setHours(0,0,0,0);
+        const d0 = new Date(d); d0.setHours(0,0,0,0);
+        const diffDays = Math.round((today0 - d0) / 86400000);
+        let dayLabel;
+        if (diffDays === 0) dayLabel = '今天';
+        else if (diffDays === 1) dayLabel = '昨天';
+        else if (diffDays === 2) dayLabel = '前天';
+        else dayLabel = `${month}月${day}日`;
+        timeHtml = `<span style="color:#2c3e50;font-weight:600">${dayLabel}</span> <span style="color:#7f8c8d">${hh}:${mi}</span><br><span style="font-size:11px;color:#bdc3c7">周${wd}</span>`;
       }
 
       tr.innerHTML = `

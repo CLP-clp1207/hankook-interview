@@ -118,7 +118,7 @@ function calcScore(a) {
   const isMale = gender.includes('男');
   const ageNum = parseInt(age);
   const ageOk = !isNaN(ageNum) && ageNum <= 30;
-  const noTattoo = !tattoo.includes('有');
+  const noTattoo = !tattoo.includes('有') || tattoo.includes('没有') || tattoo.includes('无');
 
   let score = 0;
   if (noTattoo && isMale && ageOk) {

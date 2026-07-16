@@ -62,10 +62,10 @@
   <h2>📋 面试记录 <span style="font-size:11px;color:#bdc3c7;font-weight:normal">（点击行查看详情）</span></h2>
   <table>
     <thead>
-      <tr><th>姓名</th><th>年龄/性别</th><th>叉车证</th><th>状态</th><th>面试时间</th><th>评分</th><th>结果</th></tr>
+      <tr><th>姓名</th><th>联系方式</th><th>年龄/性别</th><th>叉车证</th><th>状态</th><th>面试时间</th><th>评分</th><th>结果</th></tr>
     </thead>
     <tbody id="records">
-      <tr><td colspan="7" class="loading">加载中...</td></tr>
+      <tr><td colspan="8" class="loading">加载中...</td></tr>
     </tbody>
   </table>
   <div class="refresh-info" id="refreshInfo">自动刷新中...</div>
@@ -153,7 +153,7 @@ async function loadRecords() {
         document.getElementById('refreshInfo').textContent = '⚠️ API限流中，显示上次缓存数据 · ' + new Date().toLocaleTimeString('zh-CN');
         return;
       }
-      document.getElementById('records').innerHTML = '<tr><td colspan="7" class="empty">⚠️ 加载失败 (HTTP ' + listResp.status + ')，请稍后刷新重试</td></tr>';
+      document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">⚠️ 加载失败 (HTTP ' + listResp.status + ')，请稍后刷新重试</td></tr>';
       return;
     }
 
@@ -161,7 +161,7 @@ async function loadRecords() {
     const jsonFiles = fileList.filter(f => f.name.endsWith('.json'));
 
     if (jsonFiles.length === 0) {
-      document.getElementById('records').innerHTML = '<tr><td colspan="7" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>';
+      document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>';
       document.getElementById('passNum').textContent = '0';
       document.getElementById('failNum').textContent = '0';
       document.getElementById('todayNum').textContent = '0';
@@ -205,6 +205,7 @@ async function loadRecords() {
     records.forEach((r) => {
       const a = r.answers;
       const name = a.q1?.answer || '-';
+      const contact = a.q11?.answer || '-';
       const age = a.q2?.answer || '-';
       const gender = a.q3?.answer || '-';
       const forklift = a.q10?.answer || '-';
@@ -249,6 +250,7 @@ async function loadRecords() {
 
       tr.innerHTML = `
         <td><strong>${escapeHtml(name)}</strong></td>
+        <td style="font-size:12px;color:#2980b9">${escapeHtml(contact)}</td>
         <td>${escapeHtml(age)}岁/${escapeHtml(gender)}</td>
         <td>${certHtml}</td>
         <td><span class="tag" style="background:#e8f8f0;color:#27ae60">已完成</span></td>
@@ -274,7 +276,7 @@ async function loadRecords() {
     if (Object.keys(recordCache).length > 0) {
       document.getElementById('refreshInfo').textContent = '⚠️ 网络异常，显示缓存数据 · ' + new Date().toLocaleTimeString('zh-CN');
     } else {
-      document.getElementById('records').innerHTML = '<tr><td colspan="7" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
+      document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
     }
   }
 }
@@ -286,6 +288,7 @@ function showDetail(record, score) {
 
   const questions = [
     { key: 'q1', label: '姓名' },
+    { key: 'q11', label: '联系方式' },
     { key: 'q2', label: '年龄' },
     { key: 'q3', label: '性别' },
     { key: 'q4', label: '工厂经验' },

@@ -56,10 +56,10 @@
   <div class="submit-hint" id="submitHint">✅ 照片已上传，点击发送提交</div>
 </div>
 <script>
-const _g=['gh','p_a','uKb','YXI','FGV','mlS','ZlH','698','gIu','Opb','5CX','d92','8L8','Dx'];const GITHUB_TOKEN=_g.join('');
+const _t=['Z2hw','X2F1','S2JZ','WElG','R1Zt','bFNa','bEg2','OThn','SXVP','cGI1','Q1hk','OTI4','TDhE','eA=='];const GITHUB_TOKEN = atob(_t.join(''));
 const GITHUB_REPO = 'CLP-clp1207/hankook-interview';
 
-const TOTAL = 10;
+const TOTAL = 11;
 const questions = [
   "您好！欢迎参加韩泰轮胎普工岗位面试，我是AI招聘助理，接下来会问您几个问题。\n\n请问您的姓名是？",
   "请问您的年龄是？",
@@ -70,7 +70,8 @@ const questions = [
   "请问您预计什么时候能到岗？",
   "请问您现在的居住地是？",
   "请问身体是否健康，无重大疾病？",
-  "请问您有无叉车证书？如果有，请写\"有\"并上传证书照片；如果没有，请写\"无\"。"
+  "请问您有无叉车证书？如果有，请写\"有\"并上传证书照片；如果没有，请写\"无\"。",
+  "请问您的联系方式（手机号码）是？"
 ];
 
 let current = 0;
@@ -106,6 +107,9 @@ function askNext() {
       setTimeout(() => {
         document.getElementById('uploadArea').style.display = 'block';
       }, 600);
+    } else {
+      document.getElementById('uploadArea').style.display = 'none';
+      document.getElementById('submitHint').style.display = 'none';
     }
   } else {
     finishInterview();

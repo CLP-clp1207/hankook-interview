@@ -62,10 +62,10 @@
   <h2>📋 面试记录 <span style="font-size:11px;color:#bdc3c7;font-weight:normal">（点击行查看详情）</span></h2>
   <table>
     <thead>
-      <tr><th>姓名</th><th>联系方式</th><th>年龄/性别</th><th>学历</th><th>叉车证</th><th>面试时间</th><th>评分</th><th>结果</th></tr>
+      <tr><th>姓名</th><th>年龄/性别</th><th>学历</th><th>叉车证</th><th>面试时间</th><th>评分</th><th>结果</th></tr>
     </thead>
     <tbody id="records">
-      <tr><td colspan="8" class="loading">加载中...</td></tr>
+      <tr><td colspan="7" class="loading">加载中...</td></tr>
     </tbody>
   </table>
   <div class="refresh-info" id="refreshInfo">自动刷新中...</div>
@@ -204,13 +204,13 @@ async function loadRecords(){
         document.getElementById('refreshInfo').textContent='⚠️ API限流中，显示缓存数据 · '+new Date().toLocaleTimeString('zh-CN');
         return;
       }
-      document.getElementById('records').innerHTML='<tr><td colspan="8" class="empty">⚠️ 加载失败 (HTTP '+listResp.status+')，请稍后刷新重试</td></tr>';
+      document.getElementById('records').innerHTML='<tr><td colspan="7" class="empty">⚠️ 加载失败 (HTTP '+listResp.status+')，请稍后刷新重试</td></tr>';
       return;
     }
     var fileList=await listResp.json();
     var jsonFiles=fileList.filter(function(f){return f.name.endsWith('.json');});
     if(jsonFiles.length===0){
-      document.getElementById('records').innerHTML='<tr><td colspan="8" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>';
+      document.getElementById('records').innerHTML='<tr><td colspan="7" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>';
       document.getElementById('passNum').textContent='0';
       document.getElementById('failNum').textContent='0';
       document.getElementById('todayNum').textContent='0';
@@ -284,7 +284,6 @@ async function loadRecords(){
         timeHtml='<span style="color:#2c3e50;font-weight:600">'+dayLabel+'</span> <span style="color:#7f8c8d">'+hh+':'+mi+'</span><br><span style="font-size:11px;color:#bdc3c7">周'+wd+'</span>';
       }
       tr.innerHTML='<td><strong>'+escapeHtml(name)+'</strong></td>'+
-        '<td style="font-size:12px;color:#2980b9">'+escapeHtml(contact)+'</td>'+
         '<td>'+escapeHtml(age)+'岁/'+escapeHtml(gender)+'</td>'+
         '<td>'+escapeHtml(education)+'</td>'+
         '<td>'+certHtml+'</td>'+
@@ -305,7 +304,7 @@ async function loadRecords(){
     if(Object.keys(recordCache).length>0){
       document.getElementById('refreshInfo').textContent='⚠️ 网络异常，显示缓存数据 · '+new Date().toLocaleTimeString('zh-CN');
     }else{
-      document.getElementById('records').innerHTML='<tr><td colspan="8" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
+      document.getElementById('records').innerHTML='<tr><td colspan="7" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
     }
   }
 }

@@ -62,7 +62,7 @@
   <h2>📋 面试记录 <span style="font-size:11px;color:#bdc3c7;font-weight:normal">（点击行查看详情）</span></h2>
   <table>
     <thead>
-      <tr><th>姓名</th><th>联系方式</th><th>年龄/性别</th><th>叉车证</th><th>状态</th><th>面试时间</th><th>评分</th><th>结果</th></tr>
+      <tr><th>姓名</th><th>联系方式</th><th>年龄/性别</th><th>学历</th><th>叉车证</th><th>面试时间</th><th>评分</th><th>结果</th></tr>
     </thead>
     <tbody id="records">
       <tr><td colspan="8" class="loading">加载中...</td></tr>
@@ -74,260 +74,248 @@
   <h2>📝 面试详情</h2>
   <div id="detailContent"></div>
 </div>
-
 <div class="modal-overlay" id="certModal" onclick="closeModal()">
   <span class="modal-close">&times;</span>
   <img id="certModalImg" src="" alt="叉车证照片">
   <div class="modal-info" id="certModalInfo"></div>
 </div>
-
 <script>
-// 仓库信息
-const _t=['Z2hw','X2F1','S2JZ','WElG','R1Zt','bFNa','bEg2','OThn','SXVP','cGI1','Q1hk','OTI4','TDhE','eA=='];const TOKEN=atob(_t.join(''));
-const GITHUB_REPO = 'CLP-clp1207/hankook-interview';
-const RECORDS_API = `https://api.github.com/repos/${GITHUB_REPO}/contents/records`;
-const RAW_BASE = `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@main/records/`;
+var _t=['Z2hw','X2F1','S2JZ','WElG','R1Zt','bFNa','bEg2','OThn','SXVP','cGI1','Q1hk','OTI4','TDhE','eA=='];var TOKEN=atob(_t.join(''));
+var GITHUB_REPO='CLP-clp1207/hankook-interview';
+var RECORDS_API='https://api.github.com/repos/'+GITHUB_REPO+'/contents/records';
+var RAW_BASE='https://cdn.jsdelivr.net/gh/'+GITHUB_REPO+'@main/records/';
 
-// 客户端缓存：避免重复拉取已加载的记录
-let recordCache = {};   // { filename: recordData }
-let cachedFileList = []; // 上次拿到的文件列表
+var recordCache={};
+var cachedFileList=[];
 
-function openModal(src, info) {
-  document.getElementById('certModalImg').src = src;
-  document.getElementById('certModalInfo').textContent = info || '';
+function openModal(src,info){
+  document.getElementById('certModalImg').src=src;
+  document.getElementById('certModalInfo').textContent=info||'';
   document.getElementById('certModal').classList.add('show');
 }
-function closeModal() {
+function closeModal(){
   document.getElementById('certModal').classList.remove('show');
 }
 
-function calcScore(a) {
-  const gender = a.q3?.answer || '';
-  const age = a.q2?.answer || '';
-  const tattoo = a.q6?.answer || '';
-  const overtime = a.q5?.answer || '';
-  const exp = a.q4?.answer || '';
-  const arrival = a.q7?.answer || '';
-  const location = a.q8?.answer || '';
-  const health = a.q9?.answer || '';
+function calcScore(a){
+  var gender=a.q3?a.q3.answer:'';
+  var age=a.q2?a.q2.answer:'';
+  var tattoo=a.q10?a.q10.answer:'';
+  var overtime=a.q9?a.q9.answer:'';
+  var exp=a.q8?a.q8.answer:'';
+  var arrival=a.q11?a.q11.answer:'';
+  var location=a.q12?a.q12.answer:'';
+  var health=a.q13?a.q13.answer:'';
 
-  const isMale = gender.includes('男');
-  const ageNum = parseInt(age);
-  const ageOk = !isNaN(ageNum) && ageNum <= 30;
-  const noTattoo = !tattoo.includes('有') || tattoo.includes('没有') || tattoo.includes('无');
+  var isMale=gender.indexOf('男')>=0;
+  var ageNum=parseInt(age);
+  var ageOk=!isNaN(ageNum)&&ageNum<=35;
+  var noTattoo=tattoo.indexOf('有')<0||tattoo.indexOf('没有')>=0||tattoo.indexOf('无')>=0;
 
-  let score = 0;
-  if (noTattoo && isMale && ageOk) {
-    if (overtime.includes('能') || overtime.includes('可以') || overtime.includes('接受') || overtime.includes('没问题') || overtime.includes('行')) score += 15;
-    if (exp.length > 2) score += 15;
-    score += 10;
-    if (arrival.includes('一星期') || arrival.includes('一周') || arrival.includes('随时') || arrival.includes('立即') || arrival.includes('马上') || arrival.includes('明天') || arrival.includes('后天')) score += 10;
-    if (location.includes('秀洲')) score += 15;
-    else if (location.includes('嘉兴')) score += 10;
-    if (ageOk) score += 10;
-    score += 10;
-    if (health.includes('健康') || health.includes('是') || health.includes('没有') || health.includes('无') || health.includes('好')) score += 15;
-  } else {
-    score = 55;
+  var score=0;
+  if(noTattoo&&isMale&&ageOk){
+    if(overtime.indexOf('能')>=0||overtime.indexOf('可以')>=0||overtime.indexOf('接受')>=0||overtime.indexOf('没问题')>=0)score+=15;
+    if(exp.length>2&&exp.indexOf('没有')<0&&exp.indexOf('无')<0)score+=15;
+    score+=10;
+    if(arrival.indexOf('一周')>=0||arrival.indexOf('一星期')>=0||arrival.indexOf('随时')>=0||arrival.indexOf('立即')>=0||arrival.indexOf('马上')>=0)score+=10;
+    if(location.indexOf('秀洲')>=0)score+=15;
+    else if(location.indexOf('嘉兴')>=0)score+=10;
+    score+=10;
+    score+=10;
+    var isHealthy=health.indexOf('健康')>=0||health.indexOf('是')>=0||health.indexOf('没有')>=0||health.indexOf('无')>=0||health.indexOf('好')>=0;
+    var hasExp=exp.length>2&&exp.indexOf('没有')<0&&exp.indexOf('无')<0;
+    if(isHealthy||hasExp)score+=15;
+  }else{
+    score=55;
   }
   return score;
 }
 
-function escapeHtml(text) {
-  if (!text) return '-';
-  const div = document.createElement('div');
-  div.textContent = String(text);
+function escapeHtml(text){
+  if(!text)return '-';
+  var div=document.createElement('div');
+  div.textContent=String(text);
   return div.innerHTML;
 }
 
-async function loadRecords() {
-  try {
-    // Step 1: 列出 records 目录下的所有文件（公开仓库无需认证）
-    const listResp = await fetch(RECORDS_API + '?t=' + Date.now(), {
-      headers: { 
-        'Accept': 'application/vnd.github.v3+json',
-        'Authorization': `token ${TOKEN}`
+async function loadRecords(){
+  try{
+    var listResp=await fetch(RECORDS_API+'?t='+Date.now(),{
+      headers:{
+        'Accept':'application/vnd.github.v3+json',
+        'Authorization':'token '+TOKEN
       }
     });
-
-    if (!listResp.ok) {
-      // API 限流或出错时，如果有缓存数据就继续显示
-      if (Object.keys(recordCache).length > 0) {
-        console.warn('API 返回 ' + listResp.status + '，显示缓存数据');
-        document.getElementById('refreshInfo').textContent = '⚠️ API限流中，显示上次缓存数据 · ' + new Date().toLocaleTimeString('zh-CN');
+    if(!listResp.ok){
+      if(Object.keys(recordCache).length>0){
+        document.getElementById('refreshInfo').textContent='⚠️ API限流中，显示缓存数据 · '+new Date().toLocaleTimeString('zh-CN');
         return;
       }
-      document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">⚠️ 加载失败 (HTTP ' + listResp.status + ')，请稍后刷新重试</td></tr>';
+      document.getElementById('records').innerHTML='<tr><td colspan="8" class="empty">⚠️ 加载失败 (HTTP '+listResp.status+')，请稍后刷新重试</td></tr>';
       return;
     }
-
-    const fileList = await listResp.json();
-    const jsonFiles = fileList.filter(f => f.name.endsWith('.json'));
-
-    if (jsonFiles.length === 0) {
-      document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>';
-      document.getElementById('passNum').textContent = '0';
-      document.getElementById('failNum').textContent = '0';
-      document.getElementById('todayNum').textContent = '0';
-      document.getElementById('totalBadge').textContent = '共 0 人';
+    var fileList=await listResp.json();
+    var jsonFiles=fileList.filter(function(f){return f.name.endsWith('.json');});
+    if(jsonFiles.length===0){
+      document.getElementById('records').innerHTML='<tr><td colspan="8" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>';
+      document.getElementById('passNum').textContent='0';
+      document.getElementById('failNum').textContent='0';
+      document.getElementById('todayNum').textContent='0';
+      document.getElementById('totalBadge').textContent='共 0 人';
       return;
     }
-
-    // Step 2: 找出新增文件（缓存中没有的），只拉取这些
-    const newFiles = jsonFiles.filter(f => !recordCache[f.name]);
-    if (newFiles.length > 0) {
-      // 通过 raw.githubusercontent.com 拉取文件内容（不受 API 限流影响）
-      const fetchPromises = newFiles.map(async (file) => {
-        try {
-          const rawUrl = RAW_BASE + file.name + '?t=' + Date.now();
-          const resp = await fetch(rawUrl);
-          if (resp.ok) {
-            const text = await resp.text();
-            const record = JSON.parse(text);
-            recordCache[file.name] = record;
+    var newFiles=jsonFiles.filter(function(f){return !recordCache[f.name];});
+    if(newFiles.length>0){
+      var fetchPromises=newFiles.map(async function(file){
+        try{
+          var rawUrl=RAW_BASE+file.name+'?t='+Date.now();
+          var resp=await fetch(rawUrl);
+          if(resp.ok){
+            var text=await resp.text();
+            var record=JSON.parse(text);
+            recordCache[file.name]=record;
           }
-        } catch (e) {
-          console.error('Failed to fetch:', file.name, e);
-        }
+        }catch(e){console.error('Failed to fetch:',file.name,e);}
       });
       await Promise.all(fetchPromises);
     }
-
-    // Step 3: 汇总所有缓存记录并排序
-    const records = Object.values(recordCache);
-    records.sort((a, b) => {
-      if (a.timestamp && b.timestamp) return b.timestamp.localeCompare(a.timestamp);
+    var records=Object.values(recordCache);
+    records.sort(function(a,b){
+      if(a.timestamp&&b.timestamp)return b.timestamp.localeCompare(a.timestamp);
       return 0;
     });
-
-    let pass = 0, fail = 0, today = 0;
-    const todayStr = new Date().toISOString().slice(0, 10);
-
-    const tbody = document.getElementById('records');
-    tbody.innerHTML = '';
-
-    records.forEach((r) => {
-      const a = r.answers;
-      const name = a.q1?.answer || '-';
-      const contact = a.q11?.answer || '-';
-      const age = a.q2?.answer || '-';
-      const gender = a.q3?.answer || '-';
-      const forklift = a.q10?.answer || '-';
-
-      const score = calcScore(a);
-      if (score >= 60) pass++; else fail++;
-      if (r.timestamp && r.timestamp.startsWith(todayStr)) today++;
-
-      let certHtml = '';
-      if (forklift.includes('有') && r.certPhoto) {
-        const safeName = escapeHtml(name);
-        certHtml = `<img class="cert-thumb" src="${r.certPhoto}" onclick="event.stopPropagation();openModal(this.src,'${safeName} 的叉车证')" title="点击查看证书">`;
-      } else if (forklift.includes('有')) {
-        certHtml = '<span class="tag cert">有</span>';
-      } else {
-        certHtml = '<span style="color:#bdc3c7">无</span>';
+    var pass=0,fail=0,today=0;
+    var todayStr=new Date().toISOString().slice(0,10);
+    var tbody=document.getElementById('records');
+    tbody.innerHTML='';
+    records.forEach(function(r){
+      var a=r.answers;
+      var name=a.q1?a.q1.answer:'-';
+      var contact=a.q4?a.q4.answer:(a.q11?a.q11.answer:'-');
+      var age=a.q2?a.q2.answer:'-';
+      var gender=a.q3?a.q3.answer:'-';
+      var education=a.q5?a.q5.answer:'-';
+      var forklift=a.q14?a.q14.answer:(a.q10?a.q10.answer:'-');
+      var score=calcScore(a);
+      if(score>=60)pass++;else fail++;
+      if(r.timestamp&&r.timestamp.startsWith(todayStr))today++;
+      var certHtml='';
+      if(forklift.indexOf('有')>=0&&r.certPhoto){
+        var safeName=escapeHtml(name);
+        certHtml='<img class="cert-thumb" src="'+r.certPhoto+'" onclick="event.stopPropagation();openModal(this.src,\''+safeName+' 的叉车证\')" title="点击查看证书">';
+      }else if(forklift.indexOf('有')>=0){
+        certHtml='<span class="tag cert">有</span>';
+      }else{
+        certHtml='<span style="color:#bdc3c7">无</span>';
       }
-
-      const tr = document.createElement('tr');
-      tr.style.cursor = 'pointer';
-      tr.onclick = function() { showDetail(r, score); };
-
-      let timeHtml = '-';
-      if (r.timestamp) {
-        const d = new Date(r.timestamp);
-        const month = d.getMonth() + 1;
-        const day = d.getDate();
-        const hh = String(d.getHours()).padStart(2, '0');
-        const mi = String(d.getMinutes()).padStart(2, '0');
-        const weekdays = ['日','一','二','三','四','五','六'];
-        const wd = weekdays[d.getDay()];
-        const today0 = new Date(); today0.setHours(0,0,0,0);
-        const d0 = new Date(d); d0.setHours(0,0,0,0);
-        const diffDays = Math.round((today0 - d0) / 86400000);
-        let dayLabel;
-        if (diffDays === 0) dayLabel = '今天';
-        else if (diffDays === 1) dayLabel = '昨天';
-        else if (diffDays === 2) dayLabel = '前天';
-        else dayLabel = `${month}月${day}日`;
-        timeHtml = `<span style="color:#2c3e50;font-weight:600">${dayLabel}</span> <span style="color:#7f8c8d">${hh}:${mi}</span><br><span style="font-size:11px;color:#bdc3c7">周${wd}</span>`;
+      var tr=document.createElement('tr');
+      tr.style.cursor='pointer';
+      tr.onclick=function(){showDetail(r,score);};
+      var timeHtml='-';
+      if(r.timestamp){
+        var d=new Date(r.timestamp);
+        var month=d.getMonth()+1;
+        var day=d.getDate();
+        var hh=String(d.getHours()).padStart(2,'0');
+        var mi=String(d.getMinutes()).padStart(2,'0');
+        var weekdays=['日','一','二','三','四','五','六'];
+        var wd=weekdays[d.getDay()];
+        var today0=new Date();today0.setHours(0,0,0,0);
+        var d0=new Date(d);d0.setHours(0,0,0,0);
+        var diffDays=Math.round((today0-d0)/86400000);
+        var dayLabel;
+        if(diffDays===0)dayLabel='今天';
+        else if(diffDays===1)dayLabel='昨天';
+        else if(diffDays===2)dayLabel='前天';
+        else dayLabel=month+'月'+day+'日';
+        timeHtml='<span style="color:#2c3e50;font-weight:600">'+dayLabel+'</span> <span style="color:#7f8c8d">'+hh+':'+mi+'</span><br><span style="font-size:11px;color:#bdc3c7">周'+wd+'</span>';
       }
-
-      tr.innerHTML = `
-        <td><strong>${escapeHtml(name)}</strong></td>
-        <td style="font-size:12px;color:#2980b9">${escapeHtml(contact)}</td>
-        <td>${escapeHtml(age)}岁/${escapeHtml(gender)}</td>
-        <td>${certHtml}</td>
-        <td><span class="tag" style="background:#e8f8f0;color:#27ae60">已完成</span></td>
-        <td style="font-size:12px;color:#7f8c8d">${timeHtml}</td>
-        <td><span class="score ${score >= 60 ? 'pass' : 'fail'}">${score}分</span></td>
-        <td><span class="score ${score >= 60 ? 'pass' : 'fail'}">${score >= 60 ? '通过' : '未通过'}</span></td>
-      `;
+      tr.innerHTML='<td><strong>'+escapeHtml(name)+'</strong></td>'+
+        '<td style="font-size:12px;color:#2980b9">'+escapeHtml(contact)+'</td>'+
+        '<td>'+escapeHtml(age)+'岁/'+escapeHtml(gender)+'</td>'+
+        '<td>'+escapeHtml(education)+'</td>'+
+        '<td>'+certHtml+'</td>'+
+        '<td style="font-size:12px;color:#7f8c8d">'+timeHtml+'</td>'+
+        '<td><span class="score '+(score>=60?'pass':'fail')+'">'+score+'分</span></td>'+
+        '<td><span class="score '+(score>=60?'pass':'fail')+'">'+(score>=60?'通过':'未通过')+'</span></td>';
       tbody.appendChild(tr);
     });
-
-    document.getElementById('passNum').textContent = pass;
-    document.getElementById('failNum').textContent = fail;
-    document.getElementById('todayNum').textContent = today;
-    document.getElementById('totalBadge').textContent = `共 ${records.length} 人`;
-
-    const now = new Date();
-    const newCount = newFiles.length;
-    document.getElementById('refreshInfo').textContent = `上次刷新：${now.toLocaleTimeString('zh-CN')} · 每30秒自动刷新${newCount > 0 ? ` · 新增${newCount}条` : ''}`;
-
-  } catch (e) {
-    console.error('Load error:', e);
-    // 有缓存就继续显示
-    if (Object.keys(recordCache).length > 0) {
-      document.getElementById('refreshInfo').textContent = '⚠️ 网络异常，显示缓存数据 · ' + new Date().toLocaleTimeString('zh-CN');
-    } else {
-      document.getElementById('records').innerHTML = '<tr><td colspan="8" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
+    document.getElementById('passNum').textContent=pass;
+    document.getElementById('failNum').textContent=fail;
+    document.getElementById('todayNum').textContent=today;
+    document.getElementById('totalBadge').textContent='共 '+records.length+' 人';
+    var now=new Date();
+    var newCount=newFiles.length;
+    document.getElementById('refreshInfo').textContent='上次刷新：'+now.toLocaleTimeString('zh-CN')+' · 每30秒自动刷新'+(newCount>0?' · 新增'+newCount+'条':'');
+  }catch(e){
+    console.error('Load error:',e);
+    if(Object.keys(recordCache).length>0){
+      document.getElementById('refreshInfo').textContent='⚠️ 网络异常，显示缓存数据 · '+new Date().toLocaleTimeString('zh-CN');
+    }else{
+      document.getElementById('records').innerHTML='<tr><td colspan="8" class="empty">⚠️ 加载失败，请刷新重试</td></tr>';
     }
   }
 }
 
-function showDetail(record, score) {
-  const a = record.answers;
-  const panel = document.getElementById('detailPanel');
-  const content = document.getElementById('detailContent');
-
-  const questions = [
-    { key: 'q1', label: '姓名' },
-    { key: 'q11', label: '联系方式' },
-    { key: 'q2', label: '年龄' },
-    { key: 'q3', label: '性别' },
-    { key: 'q4', label: '工厂经验' },
-    { key: 'q5', label: '接受加班/夜班' },
-    { key: 'q6', label: '纹身情况' },
-    { key: 'q7', label: '预计到岗' },
-    { key: 'q8', label: '现居住地' },
-    { key: 'q9', label: '身体健康' },
-    { key: 'q10', label: '叉车证书' }
-  ];
-
-  let html = '';
-  questions.forEach(q => {
-    const ans = a[q.key]?.answer || '-';
-    html += `<div class="detail-row"><div class="detail-label">${q.label}</div><div class="detail-value">${escapeHtml(ans)}</div></div>`;
+function showDetail(record,score){
+  var a=record.answers;
+  var panel=document.getElementById('detailPanel');
+  var content=document.getElementById('detailContent');
+  var isNewFormat=a.q14!==undefined;
+  var questions;
+  if(isNewFormat){
+    questions=[
+      {key:'q1',label:'姓名'},
+      {key:'q2',label:'年龄'},
+      {key:'q3',label:'性别'},
+      {key:'q4',label:'联系方式'},
+      {key:'q5',label:'最终学历'},
+      {key:'q6',label:'身高/体重'},
+      {key:'q7',label:'户籍地址'},
+      {key:'q8',label:'工厂经验'},
+      {key:'q9',label:'接受加班/夜班'},
+      {key:'q10',label:'纹身情况'},
+      {key:'q11',label:'预计到岗'},
+      {key:'q12',label:'现居住地'},
+      {key:'q13',label:'身体健康'},
+      {key:'q14',label:'叉车证书'}
+    ];
+  }else{
+    questions=[
+      {key:'q1',label:'姓名'},
+      {key:'q2',label:'年龄'},
+      {key:'q3',label:'性别'},
+      {key:'q4',label:'工厂经验'},
+      {key:'q5',label:'接受加班/夜班'},
+      {key:'q6',label:'纹身情况'},
+      {key:'q7',label:'预计到岗'},
+      {key:'q8',label:'现居住地'},
+      {key:'q9',label:'身体健康'},
+      {key:'q10',label:'叉车证书'},
+      {key:'q11',label:'联系方式'}
+    ];
+  }
+  var html='';
+  questions.forEach(function(q){
+    var ans=a[q.key]?(a[q.key].answer||'-'):'-';
+    html+='<div class="detail-row"><div class="detail-label">'+q.label+'</div><div class="detail-value">'+escapeHtml(ans)+'</div></div>';
   });
-
-  if (a.q10?.answer.includes('有') && record.certPhoto) {
-    html += `<div class="detail-row"><div class="detail-label">叉车证照片</div><div class="detail-value"><img src="${record.certPhoto}" style="max-width:300px;border-radius:8px;cursor:pointer" onclick="openModal(this.src,'叉车证照片')"></div></div>`;
+  var forkliftKey=isNewFormat?'q14':'q10';
+  if(a[forkliftKey]&&a[forkliftKey].answer&&a[forkliftKey].answer.indexOf('有')>=0&&record.certPhoto){
+    html+='<div class="detail-row"><div class="detail-label">叉车证照片</div><div class="detail-value"><img src="'+record.certPhoto+'" style="max-width:300px;border-radius:8px;cursor:pointer" onclick="openModal(this.src,\'叉车证照片\')"></div></div>';
   }
-
-  html += `<div style="margin-top:16px"><span class="detail-score ${score >= 60 ? 'pass' : 'fail'}">评分：${score}分 ${score >= 60 ? '✅ 通过' : '❌ 未通过'}</span></div>`;
-
-  if (record.timestamp) {
-    const d = new Date(record.timestamp);
-    html += `<div style="margin-top:8px;font-size:12px;color:#bdc3c7">面试时间：${d.toLocaleString('zh-CN')}</div>`;
+  html+='<div style="margin-top:16px"><span class="detail-score '+(score>=60?'pass':'fail')+'">评分：'+score+'分 '+(score>=60?'✅ 通过':'❌ 未通过')+'</span></div>';
+  if(record.timestamp){
+    var d=new Date(record.timestamp);
+    html+='<div style="margin-top:8px;font-size:12px;color:#bdc3c7">面试时间：'+d.toLocaleString('zh-CN')+'</div>';
   }
-
-  content.innerHTML = html;
+  content.innerHTML=html;
   panel.classList.add('show');
-  panel.scrollIntoView({ behavior: 'smooth' });
+  panel.scrollIntoView({behavior:'smooth'});
 }
 
 loadRecords();
-setInterval(loadRecords, 30000);
+setInterval(loadRecords,30000);
 </script>
 </body>
 </html>

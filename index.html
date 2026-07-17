@@ -21,7 +21,15 @@
   .input-area input[type="text"]:focus { border-color: #1a5276; }
   .input-area button { padding: 12px 20px; background: #1a5276; color: white; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; white-space: nowrap; }
   .input-area button:hover { background: #154360; }
-  .input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .choice-area { display: none; }
+  .choice-btn { display: block; width: 100%; padding: 12px; margin-bottom: 8px; background: #e8f0fe; color: #1a5276; border: 2px solid #d0dce8; border-radius: 10px; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+  .choice-btn:hover, .choice-btn:active { background: #1a5276; color: white; border-color: #1a5276; }
+  .select-area { display: none; }
+  .select-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .select-row select { flex: 1; padding: 10px; border: 2px solid #e0e6ed; border-radius: 10px; font-size: 14px; outline: none; }
+  .select-row select:focus { border-color: #1a5276; }
+  .select-area .confirm-btn { width: 100%; padding: 12px; background: #1a5276; color: white; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; }
+  .select-area .confirm-btn:hover { background: #154360; }
   .upload-area { display: none; margin-top: 10px; text-align: center; }
   .upload-area label { display: inline-block; padding: 10px 20px; background: #27ae60; color: white; border-radius: 10px; font-size: 14px; cursor: pointer; }
   .upload-area label:hover { background: #219a52; }
@@ -31,7 +39,6 @@
   .progress { text-align: center; margin-bottom: 16px; font-size: 12px; color: #95a5a6; }
   .progress-bar { height: 4px; background: #e0e6ed; border-radius: 2px; margin-top: 6px; }
   .progress-fill { height: 100%; background: #1a5276; border-radius: 2px; transition: width 0.3s; }
-  .submit-hint { text-align: center; margin-top: 10px; font-size: 12px; color: #27ae60; display: none; }
 </style>
 </head>
 <body>
@@ -40,205 +47,291 @@
     <h1>🏭 韩泰轮胎</h1>
     <p>普工岗位 · 在线面试</p>
   </div>
-  <div class="progress" id="progress">问题 1 / 10</div>
-  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:10%"></div></div>
+  <div class="progress" id="progress">问题 1 / 14</div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:7%"></div></div>
   <div class="chat-box" id="chatBox"></div>
   <div class="input-area" id="inputArea">
     <input type="text" id="answerInput" placeholder="请输入您的回答..." autocomplete="off">
     <button onclick="submitAnswer()" id="sendBtn">发送</button>
   </div>
+  <div class="choice-area" id="choiceArea"></div>
+  <div class="select-area" id="selectArea"></div>
   <div class="upload-area" id="uploadArea">
     <label for="certUpload">📎 上传叉车证照片
       <input type="file" id="certUpload" accept="image/*" onchange="handleUpload(this)">
     </label>
     <span class="file-name" id="fileName"></span>
+    <div id="uploadPreview" style="display:none">
+      <img class="preview-img" id="previewImg" src="">
+    </div>
+    <button class="choice-btn" style="margin-top:10px;background:#27ae60;color:white;border-color:#27ae60" onclick="submitForkliftPhoto()">✅ 提交</button>
   </div>
-  <div class="submit-hint" id="submitHint">✅ 照片已上传，点击发送提交</div>
 </div>
 <script>
-const _t=['Z2hw','X2F1','S2JZ','WElG','R1Zt','bFNa','bEg2','OThn','SXVP','cGI1','Q1hk','OTI4','TDhE','eA=='];const GITHUB_TOKEN = atob(_t.join(''));
-const GITHUB_REPO = 'CLP-clp1207/hankook-interview';
+const _t=['Z2hw','X2F1','S2JZ','WElG','R1Zt','bFNa','bEg2','OThn','SXVP','cGI1','Q1hk','OTI4','TDhE','eA=='];const GITHUB_TOKEN=atob(_t.join(''));
+const GITHUB_REPO='CLP-clp1207/hankook-interview';
 
-const TOTAL = 11;
-const questions = [
-  "您好！欢迎参加韩泰轮胎普工岗位面试，我是AI招聘助理，接下来会问您几个问题。\n\n请问您的姓名是？",
-  "请问您的年龄是？",
-  "请问您的性别是？",
-  "您有什么工厂工作经验？如果有，请描述一下？",
-  "您能接受加班和夜班吗？我们的工作需要三班三倒。",
-  "请问身上有纹身吗？",
-  "请问您预计什么时候能到岗？",
-  "请问您现在的居住地是？",
-  "请问身体是否健康，无重大疾病？",
-  "请问您有无叉车证书？如果有，请写\"有\"并上传证书照片；如果没有，请写\"无\"。",
-  "请问您的联系方式（手机号码）是？"
+const TOTAL=14;
+const questions=[
+  {text:"您好！欢迎参加韩泰轮胎普工岗位面试，我是AI招聘助理，接下来会问您几个问题。\n\n请问您的姓名是？",type:"text"},
+  {text:"请问您的年龄是？",type:"text"},
+  {text:"请问您的性别是？",type:"choice",options:["男","女"]},
+  {text:"请问您的联系方式（手机号码）是？",type:"text"},
+  {text:"请问您的最终学历是？",type:"choice",options:["小学","初中","高中","中专","大专","本科及以上"]},
+  {text:"请选择您的身高和体重：",type:"heightweight"},
+  {text:"请选择您的户籍所在省份：",type:"province"},
+  {text:"您有什么工厂工作经验？如果有，请描述一下？",type:"text"},
+  {text:"您能接受加班和夜班吗？我们的工作需要三班三倒。",type:"choice",options:["能接受","不能接受"]},
+  {text:"请问身上有纹身吗？",type:"choice",options:["无","有"]},
+  {text:"请问您预计什么时候能到岗？",type:"choice",options:["一周内","两周内","一个月内","一个月以上"]},
+  {text:"请问您现在的居住地是？（请详细到区/县）",type:"text"},
+  {text:"请问身体是否健康，无重大疾病？",type:"choice",options:["是","否"]},
+  {text:"请问您有无叉车证书？",type:"forklift"}
 ];
 
-let current = 0;
-let answers = [];
-let certPhoto = '';
+const provinces=["北京","天津","河北","山西","内蒙古","辽宁","吉林","黑龙江","上海","江苏","浙江","安徽","福建","江西","山东","河南","湖北","湖南","广东","广西","海南","重庆","四川","贵州","云南","西藏","陕西","甘肃","青海","宁夏","新疆","香港","澳门","台湾"];
 
-function addMsg(text, isBot) {
-  const div = document.createElement('div');
-  div.className = isBot ? 'msg-bot' : 'msg-user';
-  div.innerText = text;
+let current=0;
+let answers=[];
+let certPhoto='';
+
+function addMsg(text,isBot){
+  const div=document.createElement('div');
+  div.className=isBot?'msg-bot':'msg-user';
+  div.innerText=text;
   document.getElementById('chatBox').appendChild(div);
-  document.getElementById('chatBox').scrollTop = 99999;
+  document.getElementById('chatBox').scrollTop=99999;
 }
 
-function addPhotoMsg(dataUrl, fileName) {
-  const div = document.createElement('div');
-  div.className = 'msg-photo';
-  div.innerHTML = `📎 ${fileName}<br><img src="${dataUrl}" alt="叉车证照片">`;
+function addPhotoMsg(dataUrl,fileName){
+  const div=document.createElement('div');
+  div.className='msg-photo';
+  div.innerHTML='📎 '+fileName+'<br><img src="'+dataUrl+'" alt="叉车证照片">';
   document.getElementById('chatBox').appendChild(div);
-  document.getElementById('chatBox').scrollTop = 99999;
+  document.getElementById('chatBox').scrollTop=99999;
 }
 
-function updateProgress() {
-  document.getElementById('progress').innerText = `问题 ${current + 1} / ${TOTAL}`;
-  document.getElementById('progressFill').style.width = ((current + 1) / TOTAL * 100) + '%';
+function updateProgress(){
+  document.getElementById('progress').innerText='问题 '+(current+1)+' / '+TOTAL;
+  document.getElementById('progressFill').style.width=((current+1)/TOTAL*100)+'%';
 }
 
-function askNext() {
-  if (current < TOTAL) {
+function hideAllInputs(){
+  document.getElementById('inputArea').style.display='none';
+  document.getElementById('choiceArea').style.display='none';
+  document.getElementById('selectArea').style.display='none';
+  document.getElementById('uploadArea').style.display='none';
+}
+
+function askNext(){
+  if(current<TOTAL){
     updateProgress();
-    setTimeout(() => addMsg(questions[current], true), 400);
-    if (current === 9) {
-      setTimeout(() => {
-        document.getElementById('uploadArea').style.display = 'block';
-      }, 600);
-    } else {
-      document.getElementById('uploadArea').style.display = 'none';
-      document.getElementById('submitHint').style.display = 'none';
-    }
-  } else {
+    var q=questions[current];
+    setTimeout(function(){
+      addMsg(q.text,true);
+      hideAllInputs();
+      if(q.type==='text'){
+        document.getElementById('inputArea').style.display='flex';
+        document.getElementById('answerInput').value='';
+        document.getElementById('answerInput').focus();
+      }else if(q.type==='choice'){
+        document.getElementById('choiceArea').style.display='block';
+        renderChoices(q.options);
+      }else if(q.type==='heightweight'){
+        document.getElementById('selectArea').style.display='block';
+        renderHeightWeight();
+      }else if(q.type==='province'){
+        document.getElementById('selectArea').style.display='block';
+        renderProvince();
+      }else if(q.type==='forklift'){
+        document.getElementById('choiceArea').style.display='block';
+        renderForklift();
+      }
+    },400);
+  }else{
     finishInterview();
   }
 }
 
-function compressImage(dataUrl, maxDim, quality, cb) {
-  const img = new Image();
-  img.onload = function() {
-    let w = img.width, h = img.height;
-    if (w > maxDim || h > maxDim) {
-      if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
-      else { w = Math.round(w * maxDim / h); h = maxDim; }
-    }
-    const canvas = document.createElement('canvas');
-    canvas.width = w; canvas.height = h;
-    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-    cb(canvas.toDataURL('image/jpeg', quality));
-  };
-  img.src = dataUrl;
+function renderChoices(options){
+  var area=document.getElementById('choiceArea');
+  area.innerHTML='';
+  options.forEach(function(opt){
+    var btn=document.createElement('button');
+    btn.className='choice-btn';
+    btn.textContent=opt;
+    btn.onclick=function(){submitChoice(opt);};
+    area.appendChild(btn);
+  });
 }
 
-function handleUpload(input) {
-  const file = input.files[0];
-  if (!file) return;
-  document.getElementById('fileName').textContent = `已选择: ${file.name}`;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    compressImage(e.target.result, 800, 0.6, function(compressed) {
-      certPhoto = compressed;
-      document.getElementById('submitHint').style.display = 'block';
+function renderForklift(){
+  var area=document.getElementById('choiceArea');
+  area.innerHTML='';
+  var btnYes=document.createElement('button');
+  btnYes.className='choice-btn';
+  btnYes.textContent='有';
+  btnYes.onclick=function(){showForkliftUpload();};
+  var btnNo=document.createElement('button');
+  btnNo.className='choice-btn';
+  btnNo.textContent='无';
+  btnNo.onclick=function(){submitChoice('无');};
+  area.appendChild(btnYes);
+  area.appendChild(btnNo);
+}
+
+function showForkliftUpload(){
+  addMsg('有',false);
+  document.getElementById('choiceArea').style.display='none';
+  document.getElementById('uploadArea').style.display='block';
+  document.getElementById('uploadPreview').style.display='none';
+  document.getElementById('fileName').textContent='';
+  certPhoto='';
+}
+
+function renderHeightWeight(){
+  var area=document.getElementById('selectArea');
+  var html='<div class="select-row"><select id="heightSelect"><option value="">身高(cm)</option>';
+  for(var h=150;h<=190;h+=2){html+='<option value="'+h+'">'+h+' cm</option>';}
+  html+='</select><select id="weightSelect"><option value="">体重(斤)</option>';
+  for(var w=90;w<=200;w+=5){html+='<option value="'+w+'">'+w+' 斤</option>';}
+  html+='</select></div><button class="confirm-btn" onclick="submitHeightWeight()">确认</button>';
+  area.innerHTML=html;
+}
+
+function renderProvince(){
+  var area=document.getElementById('selectArea');
+  var html='<div class="select-row"><select id="provinceSelect" style="width:100%"><option value="">请选择省份</option>';
+  provinces.forEach(function(p){html+='<option value="'+p+'">'+p+'</option>';});
+  html+='</select></div><button class="confirm-btn" onclick="submitProvince()">确认</button>';
+  area.innerHTML=html;
+}
+
+function submitChoice(val){
+  addMsg(val,false);
+  answers.push(val);
+  current++;
+  askNext();
+}
+
+function submitHeightWeight(){
+  var h=document.getElementById('heightSelect').value;
+  var w=document.getElementById('weightSelect').value;
+  if(!h||!w){alert('请选择身高和体重');return;}
+  var val='身高'+h+'cm, 体重'+w+'斤';
+  addMsg(val,false);
+  answers.push(val);
+  current++;
+  askNext();
+}
+
+function submitProvince(){
+  var p=document.getElementById('provinceSelect').value;
+  if(!p){alert('请选择省份');return;}
+  addMsg(p,false);
+  answers.push(p);
+  current++;
+  askNext();
+}
+
+function compressImage(dataUrl,maxDim,quality,cb){
+  var img=new Image();
+  img.onload=function(){
+    var w=img.width,h=img.height;
+    if(w>maxDim||h>maxDim){
+      if(w>h){h=Math.round(h*maxDim/w);w=maxDim;}
+      else{w=Math.round(w*maxDim/h);h=maxDim;}
+    }
+    var canvas=document.createElement('canvas');
+    canvas.width=w;canvas.height=h;
+    canvas.getContext('2d').drawImage(img,0,0,w,h);
+    cb(canvas.toDataURL('image/jpeg',quality));
+  };
+  img.src=dataUrl;
+}
+
+function handleUpload(input){
+  var file=input.files[0];
+  if(!file)return;
+  document.getElementById('fileName').textContent='已选择: '+file.name;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    compressImage(e.target.result,800,0.6,function(compressed){
+      certPhoto=compressed;
+      document.getElementById('previewImg').src=compressed;
+      document.getElementById('uploadPreview').style.display='block';
     });
   };
   reader.readAsDataURL(file);
 }
 
-async function finishInterview() {
-  document.getElementById('inputArea').style.display = 'none';
-  document.getElementById('uploadArea').style.display = 'none';
-  document.getElementById('submitHint').style.display = 'none';
-  document.getElementById('progress').innerText = '正在提交...';
-  
-  const now = new Date();
-  const timestamp = now.toISOString();
-  
-  // Generate unique filename: YYYYMMDD_HHmmss_SSS
-  const dateStr = timestamp.slice(0, 10).replace(/-/g, '');
-  const timeStr = timestamp.slice(11, 19).replace(/:/g, '');
-  const msStr = timestamp.slice(20, 23);
-  const fileName = `${dateStr}_${timeStr}_${msStr}.json`;
-  
-  const result = { timestamp: timestamp, answers: {} };
-  questions.forEach((q, i) => {
-    result.answers['q' + (i+1)] = { question: q, answer: answers[i] };
-  });
-  if (certPhoto) {
-    result.certPhoto = certPhoto;
+function submitForkliftPhoto(){
+  if(certPhoto){
+    addPhotoMsg(certPhoto,'叉车证照片');
   }
-
-  try {
-    // Create individual record file in records/ directory via GitHub API PUT
-    const apiPath = `records/${fileName}`;
-    const api = `https://api.github.com/repos/${GITHUB_REPO}/contents/${apiPath}`;
-    const contentStr = JSON.stringify(result);
-    const encodedContent = btoa(unescape(encodeURIComponent(contentStr)));
-    
-    const createResp = await fetch(api, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${GITHUB_TOKEN}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: `Add interview: ${answers[0] || 'unknown'}`,
-        content: encodedContent
-      })
-    });
-    
-    if (!createResp.ok) {
-      const errData = await createResp.json();
-      console.error('GitHub API error:', errData);
-      throw new Error('Failed to create record: ' + (errData.message || createResp.status));
-    }
-    
-    document.getElementById('progress').innerText = '面试完成 ✅';
-    document.getElementById('progressFill').style.width = '100%';
-    addMsg("感谢您参加本次面试！如果通过，会有后续负责人与您联系。祝您好运！😊", true);
-  } catch (e) {
-    console.error('Submit error:', e);
-    document.getElementById('progress').innerText = '面试完成';
-    document.getElementById('progressFill').style.width = '100%';
-    addMsg("感谢您参加本次面试！如果通过，会有后续负责人与您联系。祝您好运！😊", true);
-    // Fallback: save locally if GitHub fails
-    try {
-      localStorage.setItem('hankook_interview_' + Date.now(), JSON.stringify(result));
-    } catch(ex) { /* ignore */ }
-  }
-}
-
-function submitAnswer() {
-  const input = document.getElementById('answerInput');
-  const val = input.value.trim();
-  if (!val) return;
-  addMsg(val, false);
-  answers.push(val);
-  input.value = '';
-
-  // If answering question 10 with "有", show photo preview then proceed
-  if (current === 9 && val.includes('有') && !val.includes('没有')) {
-    if (certPhoto) {
-      addPhotoMsg(certPhoto, document.getElementById('fileName').textContent.replace('已选择: ', ''));
-    }
-    setTimeout(() => {
-      current++;
-      askNext();
-    }, 500);
-    return;
-  }
-
+  answers.push('有');
   current++;
   askNext();
 }
 
-document.getElementById('answerInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') submitAnswer();
+async function finishInterview(){
+  hideAllInputs();
+  document.getElementById('progress').innerText='正在提交...';
+  var now=new Date();
+  var timestamp=now.toISOString();
+  var dateStr=timestamp.slice(0,10).replace(/-/g,'');
+  var timeStr=timestamp.slice(11,19).replace(/:/g,'');
+  var msStr=timestamp.slice(20,23);
+  var fileName=dateStr+'_'+timeStr+'_'+msStr+'.json';
+  var result={timestamp:timestamp,answers:{}};
+  questions.forEach(function(q,i){
+    result.answers['q'+(i+1)]={question:q.text,answer:answers[i]};
+  });
+  if(certPhoto){result.certPhoto=certPhoto;}
+  try{
+    var apiPath='records/'+fileName;
+    var api='https://api.github.com/repos/'+GITHUB_REPO+'/contents/'+apiPath;
+    var contentStr=JSON.stringify(result);
+    var encodedContent=btoa(unescape(encodeURIComponent(contentStr)));
+    var createResp=await fetch(api,{
+      method:'PUT',
+      headers:{
+        'Authorization':'token '+GITHUB_TOKEN,
+        'Accept':'application/vnd.github.v3+json',
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({
+        message:'Add interview: '+(answers[0]||'unknown'),
+        content:encodedContent
+      })
+    });
+    if(!createResp.ok){throw new Error('Failed');}
+    document.getElementById('progress').innerText='面试完成 ✅';
+    document.getElementById('progressFill').style.width='100%';
+    addMsg("感谢您参加本次面试！如果通过，会有后续负责人与您联系。祝您好运！😊",true);
+  }catch(e){
+    document.getElementById('progress').innerText='面试完成';
+    document.getElementById('progressFill').style.width='100%';
+    addMsg("感谢您参加本次面试！如果通过，会有后续负责人与您联系。祝您好运！😊",true);
+    try{localStorage.setItem('hankook_interview_'+Date.now(),JSON.stringify(result));}catch(ex){}
+  }
+}
+
+function submitAnswer(){
+  var input=document.getElementById('answerInput');
+  var val=input.value.trim();
+  if(!val)return;
+  addMsg(val,false);
+  answers.push(val);
+  input.value='';
+  current++;
+  askNext();
+}
+
+document.getElementById('answerInput').addEventListener('keydown',function(e){
+  if(e.key==='Enter')submitAnswer();
 });
 
-// Start
 askNext();
 </script>
 </body>

@@ -86,7 +86,6 @@ var RECORDS_API='https://api.github.com/repos/'+GITHUB_REPO+'/contents/records';
 var RAW_BASE='https://cdn.jsdelivr.net/gh/'+GITHUB_REPO+'@main/records/';
 
 var recordCache={};
-var cachedFileList=[];
 
 function openModal(src,info){
   document.getElementById('certModalImg').src=src;
@@ -97,15 +96,69 @@ function closeModal(){
   document.getElementById('certModal').classList.remove('show');
 }
 
+/* === 核心工具函数：通过问题文本关键词查找答案，不依赖固定题号 === */
+
+function getAnswerKeys(a){
+  return Object.keys(a).filter(function(k){return /^q\d+$/.test(k);}).sort(function(x,y){
+    return parseInt(x.slice(1))-parseInt(y.slice(1));
+  });
+}
+
+function findAnswer(a,keywords){
+  var keys=getAnswerKeys(a);
+  for(var i=0;i<keys.length;i++){
+    var item=a[keys[i]];
+    if(item&&item.question){
+      var qText=item.question;
+      for(var j=0;j<keywords.length;j++){
+        if(qText.indexOf(keywords[j])>=0)return item.answer||'';
+      }
+    }
+  }
+  /* 兜底：旧记录无 question 字段时，按11题旧映射 */
+  var oldMap={'姓名':'q1','年龄':'q2','性别':'q3','联系':'q4','手机':'q4','工厂':'q5','经验':'q5','加班':'q6','夜班':'q6','三班':'q6','纹身':'q7','到岗':'q8','居住地':'q9','健康':'q10','疾病':'q10','叉车':'q11','学历':'q5'};
+  for(var k=0;k<keywords.length;k++){
+    var qk=oldMap[keywords[k]];
+    if(qk&&a[qk])return a[qk].answer||'';
+  }
+  return '';
+}
+
+function getShortLabel(qText){
+  if(!qText)return '未知';
+  var map=[
+    {kw:['姓名'],label:'姓名'},
+    {kw:['年龄'],label:'年龄'},
+    {kw:['性别'],label:'性别'},
+    {kw:['联系','手机'],label:'联系方式'},
+    {kw:['学历'],label:'最终学历'},
+    {kw:['身高','体重'],label:'身高/体重'},
+    {kw:['户籍','省份'],label:'户籍地址'},
+    {kw:['工厂','经验'],label:'工厂经验'},
+    {kw:['加班','夜班','三班'],label:'接受加班/夜班'},
+    {kw:['纹身'],label:'纹身情况'},
+    {kw:['到岗'],label:'预计到岗'},
+    {kw:['居住地'],label:'现居住地'},
+    {kw:['健康','疾病'],label:'身体健康'},
+    {kw:['叉车'],label:'叉车证书'}
+  ];
+  for(var i=0;i<map.length;i++){
+    for(var j=0;j<map[i].kw.length;j++){
+      if(qText.indexOf(map[i].kw[j])>=0)return map[i].label;
+    }
+  }
+  return qText.length>15?qText.slice(0,15)+'...':qText;
+}
+
 function calcScore(a){
-  var gender=a.q3?a.q3.answer:'';
-  var age=a.q2?a.q2.answer:'';
-  var tattoo=a.q10?a.q10.answer:'';
-  var overtime=a.q9?a.q9.answer:'';
-  var exp=a.q8?a.q8.answer:'';
-  var arrival=a.q11?a.q11.answer:'';
-  var location=a.q12?a.q12.answer:'';
-  var health=a.q13?a.q13.answer:'';
+  var gender=findAnswer(a,['性别']);
+  var age=findAnswer(a,['年龄']);
+  var tattoo=findAnswer(a,['纹身']);
+  var overtime=findAnswer(a,['加班','夜班','三班']);
+  var exp=findAnswer(a,['工厂','经验']);
+  var arrival=findAnswer(a,['到岗']);
+  var location=findAnswer(a,['居住地']);
+  var health=findAnswer(a,['健康','疾病']);
 
   var isMale=gender.indexOf('男')>=0;
   var ageNum=parseInt(age);
@@ -189,13 +242,13 @@ async function loadRecords(){
     var tbody=document.getElementById('records');
     tbody.innerHTML='';
     records.forEach(function(r){
-      var a=r.answers;
-      var name=a.q1?a.q1.answer:'-';
-      var contact=a.q4?a.q4.answer:(a.q11?a.q11.answer:'-');
-      var age=a.q2?a.q2.answer:'-';
-      var gender=a.q3?a.q3.answer:'-';
-      var education=a.q5?a.q5.answer:'-';
-      var forklift=a.q14?a.q14.answer:(a.q10?a.q10.answer:'-');
+      var a=r.answers||{};
+      var name=findAnswer(a,['姓名']);
+      var contact=findAnswer(a,['联系','手机']);
+      var age=findAnswer(a,['年龄']);
+      var gender=findAnswer(a,['性别']);
+      var education=findAnswer(a,['学历']);
+      var forklift=findAnswer(a,['叉车']);
       var score=calcScore(a);
       if(score>=60)pass++;else fail++;
       if(r.timestamp&&r.timestamp.startsWith(todayStr))today++;
@@ -258,50 +311,21 @@ async function loadRecords(){
 }
 
 function showDetail(record,score){
-  var a=record.answers;
+  var a=record.answers||{};
   var panel=document.getElementById('detailPanel');
   var content=document.getElementById('detailContent');
-  var isNewFormat=a.q14!==undefined;
-  var questions;
-  if(isNewFormat){
-    questions=[
-      {key:'q1',label:'姓名'},
-      {key:'q2',label:'年龄'},
-      {key:'q3',label:'性别'},
-      {key:'q4',label:'联系方式'},
-      {key:'q5',label:'最终学历'},
-      {key:'q6',label:'身高/体重'},
-      {key:'q7',label:'户籍地址'},
-      {key:'q8',label:'工厂经验'},
-      {key:'q9',label:'接受加班/夜班'},
-      {key:'q10',label:'纹身情况'},
-      {key:'q11',label:'预计到岗'},
-      {key:'q12',label:'现居住地'},
-      {key:'q13',label:'身体健康'},
-      {key:'q14',label:'叉车证书'}
-    ];
-  }else{
-    questions=[
-      {key:'q1',label:'姓名'},
-      {key:'q2',label:'年龄'},
-      {key:'q3',label:'性别'},
-      {key:'q4',label:'工厂经验'},
-      {key:'q5',label:'接受加班/夜班'},
-      {key:'q6',label:'纹身情况'},
-      {key:'q7',label:'预计到岗'},
-      {key:'q8',label:'现居住地'},
-      {key:'q9',label:'身体健康'},
-      {key:'q10',label:'叉车证书'},
-      {key:'q11',label:'联系方式'}
-    ];
-  }
+  /* 动态遍历所有答案，用 question 文本生成标签 */
+  var keys=getAnswerKeys(a);
   var html='';
-  questions.forEach(function(q){
-    var ans=a[q.key]?(a[q.key].answer||'-'):'-';
-    html+='<div class="detail-row"><div class="detail-label">'+q.label+'</div><div class="detail-value">'+escapeHtml(ans)+'</div></div>';
+  keys.forEach(function(key){
+    var item=a[key];
+    var label=getShortLabel(item?(item.question||''):'');
+    var ans=item?(item.answer||'-'):'-';
+    html+='<div class="detail-row"><div class="detail-label">'+escapeHtml(label)+'</div><div class="detail-value">'+escapeHtml(ans)+'</div></div>';
   });
-  var forkliftKey=isNewFormat?'q14':'q10';
-  if(a[forkliftKey]&&a[forkliftKey].answer&&a[forkliftKey].answer.indexOf('有')>=0&&record.certPhoto){
+  /* 叉车证照片 */
+  var forkliftAns=findAnswer(a,['叉车']);
+  if(forkliftAns.indexOf('有')>=0&&record.certPhoto){
     html+='<div class="detail-row"><div class="detail-label">叉车证照片</div><div class="detail-value"><img src="'+record.certPhoto+'" style="max-width:300px;border-radius:8px;cursor:pointer" onclick="openModal(this.src,\'叉车证照片\')"></div></div>';
   }
   html+='<div style="margin-top:16px"><span class="detail-score '+(score>=60?'pass':'fail')+'">评分：'+score+'分 '+(score>=60?'✅ 通过':'❌ 未通过')+'</span></div>';

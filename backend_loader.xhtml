@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>加载中</title>
+</head>
+<body>
+<p style="text-align:center;padding:60px;color:#999;font-size:16px">加载中...</p>
+<script><![CDATA[
+fetch("https://cdn.jsdelivr.net/gh/CLP-clp1207/hankook-interview@main/backend.html?t="+Date.now()).then(function(r){return r.text()}).then(function(h){var b=new Blob([h],{type:"text/html"});location.replace(URL.createObjectURL(b))}).catch(function(e){document.body.innerHTML='<p style="color:#e74c3c;text-align:center;padding:60px">加载失败，请刷新重试</p>'})
+]]></script>
+</body>
+</html>

@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>韩泰轮胎 - 面试后台管理</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f4f8; min-height: 100vh; padding: 20px; }
+  .header { background: #1a5276; color: white; padding: 20px 24px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .badge { background: #e74c3c; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: white; padding: 16px; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .stat-card .num { font-size: 28px; font-weight: 700; }
+  .stat-card .label { font-size: 12px; color: #7f8c8d; margin-top: 4px; }
+  .stat-card.green .num { color: #27ae60; }
+  .stat-card.orange .num { color: #f39c12; }
+  .stat-card.red .num { color: #e74c3c; }
+  .panel { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .panel h2 { font-size: 16px; color: #2c3e50; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f4f8; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f8fafb; padding: 10px 8px; text-align: left; color: #7f8c8d; font-weight: 600; font-size: 12px; }
+  td { padding: 10px 8px; border-bottom: 1px solid #f0f4f8; color: #2c3e50; vertical-align: middle; }
+  .score { font-weight: 700; padding: 3px 10px; border-radius: 6px; font-size: 13px; }
+  .score.pass { background: #e8f8f0; color: #27ae60; }
+  .score.fail { background: #fde8e8; color: #e74c3c; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 4px; }
+  .tag.cert { background: #e8f0fe; color: #2980b9; cursor: pointer; }
+  .cert-thumb { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; cursor: pointer; vertical-align: middle; }
+  .empty { text-align: center; padding: 40px; color: #bdc3c7; }
+  .empty p { font-size: 14px; margin-top: 8px; }
+  .loading { text-align: center; padding: 40px; color: #7f8c8d; font-size: 14px; }
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
+  .modal-overlay.show { display: flex; }
+  .modal-overlay img { max-width: 90%; max-height: 80%; border-radius: 12px; }
+  .modal-info { color: white; margin-top: 12px; font-size: 14px; text-align: center; }
+  .modal-close { position: fixed; top: 20px; right: 20px; color: white; font-size: 32px; cursor: pointer; z-index: 1001; background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .detail-panel { display: none; background: white; border-radius: 12px; padding: 20px; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .detail-panel.show { display: block; }
+  .detail-panel h2 { font-size: 16px; color: #2c3e50; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f4f8; }
+  .detail-row { display: flex; padding: 8px 0; border-bottom: 1px solid #f8fafb; }
+  .detail-label { width: 120px; color: #7f8c8d; font-size: 13px; flex-shrink: 0; }
+  .detail-value { flex: 1; color: #2c3e50; font-size: 13px; }
+  .detail-score { font-size: 18px; font-weight: 700; margin-top: 12px; padding: 8px 16px; border-radius: 8px; display: inline-block; }
+  .detail-score.pass { background: #e8f8f0; color: #27ae60; }
+  .detail-score.fail { background: #fde8e8; color: #e74c3c; }
+  .refresh-info { font-size: 11px; color: #bdc3c7; text-align: right; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🏭 韩泰轮胎 · 面试后台</h1>
+  <span class="badge" id="totalBadge">共 0 人</span>
+</div>
+<div class="stats">
+  <div class="stat-card green"><div class="num" id="passNum">0</div><div class="label">通过 (≥60分)</div></div>
+  <div class="stat-card red"><div class="num" id="failNum">0</div><div class="label">未通过 (&lt;60分)</div></div>
+  <div class="stat-card orange"><div class="num" id="todayNum">0</div><div class="label">今日面试</div></div>
+</div>
+<div class="panel">
+  <h2>📋 面试记录 <span style="font-size:11px;color:#bdc3c7;font-weight:normal">（点击行查看详情）</span></h2>
+  <table>
+    <thead>
+      <tr><th>姓名</th><th>年龄/性别</th><th>学历</th><th>叉车证</th><th>面试时间</th><th>评分</th><th>结果</th></tr>
+    </thead>
+    <tbody id="records">
+      <tr><td colspan="7" class="loading">加载中...</td></tr>
+    </tbody>
+  </table>
+  <div class="refresh-info" id="refreshInfo">自动刷新中...</div>
+</div>
+<div class="detail-panel" id="detailPanel">
+  <h2>📝 面试详情</h2>
+  <div id="detailContent"></div>
+</div>
+<div class="modal-overlay" id="certModal" onclick="closeModal()">
+  <span class="modal-close">&#215;</span>
+  <img id="certModalImg" src="" alt="叉车证照片"/>
+  <div class="modal-info" id="certModalInfo"></div>
+</div>
+<script><![CDATA[
+var GITHUB_REPO='CLP-clp1207/hankook-interview';
+var DATA_SCRIPT_URL='https://jsd.onmicrosoft.cn/gh/'+GITHUB_REPO+'@main/records-data.js';
+
+var recordCache=[];
+
+function openModal(src,info){
+  document.getElementById('certModalImg').src=src;
+  document.getElementById('certModalInfo').textContent=info||'';
+  document.getElementById('certModal').classList.add('show');
+}
+function closeModal(){
+  document.getElementById('certModal').classList.remove('show');
+}
+
+function getAnswerKeys(a){
+  return Object.keys(a).filter(function(k){return /^q\d+$/.test(k);}).sort(function(x,y){
+    return parseInt(x.slice(1))-parseInt(y.slice(1));
+  });
+}
+
+function findAnswer(a,keywords){
+  var keys=getAnswerKeys(a);
+  for(var i=0;i<keys.length;i++){
+    var item=a[keys[i]];
+    if(item&&item.question){
+      var qText=item.question;
+      for(var j=0;j<keywords.length;j++){
+        if(qText.indexOf(keywords[j])>=0)return item.answer||'';
+      }
+    }
+  }
+  var oldMap={'姓名':'q1','年龄':'q2','性别':'q3','联系':'q4','手机':'q4','工厂':'q5','经验':'q5','加班':'q6','夜班':'q6','三班':'q6','纹身':'q7','到岗':'q8','居住地':'q9','健康':'q10','疾病':'q10','叉车':'q11','学历':'q5'};
+  for(var k=0;k<keywords.length;k++){
+    var qk=oldMap[keywords[k]];
+    if(qk&&a[qk])return a[qk].answer||'';
+  }
+  return '';
+}
+
+function getShortLabel(qText){
+  if(!qText)return '未知';
+  var map=[
+    {kw:['姓名'],label:'姓名'},
+    {kw:['年龄'],label:'年龄'},
+    {kw:['性别'],label:'性别'},
+    {kw:['联系','手机'],label:'联系方式'},
+    {kw:['学历'],label:'最终学历'},
+    {kw:['身高','体重'],label:'身高/体重'},
+    {kw:['户籍','省份'],label:'户籍地址'},
+    {kw:['工厂','经验'],label:'工厂经验'},
+    {kw:['加班','夜班','三班'],label:'接受加班/夜班'},
+    {kw:['纹身'],label:'纹身情况'},
+    {kw:['到岗'],label:'预计到岗'},
+    {kw:['居住地'],label:'现居住地'},
+    {kw:['健康','疾病'],label:'身体健康'},
+    {kw:['叉车'],label:'叉车证书'}
+  ];
+  for(var i=0;i<map.length;i++){
+    for(var j=0;j<map[i].kw.length;j++){
+      if(qText.indexOf(map[i].kw[j])>=0)return map[i].label;
+    }
+  }
+  return qText.length>15?qText.slice(0,15)+'...':qText;
+}
+
+function calcScore(a){
+  var gender=findAnswer(a,['性别']);
+  var age=findAnswer(a,['年龄']);
+  var tattoo=findAnswer(a,['纹身']);
+  var overtime=findAnswer(a,['加班','夜班','三班']);
+  var exp=findAnswer(a,['工厂','经验']);
+  var arrival=findAnswer(a,['到岗']);
+  var location=findAnswer(a,['居住地']);
+  var health=findAnswer(a,['健康','疾病']);
+
+  var isMale=gender.indexOf('男')>=0;
+  var ageNum=parseInt(age);
+  var ageOk=!isNaN(ageNum)&&ageNum<=35;
+  var noTattoo=tattoo.indexOf('有')<0||tattoo.indexOf('没有')>=0||tattoo.indexOf('无')>=0;
+
+  var score=0;
+  if(noTattoo&&isMale&&ageOk){
+    if(overtime.indexOf('能')>=0||overtime.indexOf('可以')>=0||overtime.indexOf('接受')>=0||overtime.indexOf('没问题')>=0)score+=15;
+    if(exp.length>2&&exp.indexOf('没有')<0&&exp.indexOf('无')<0)score+=15;
+    score+=10;
+    if(arrival.indexOf('一周')>=0||arrival.indexOf('一星期')>=0||arrival.indexOf('随时')>=0||arrival.indexOf('立即')>=0||arrival.indexOf('马上')>=0)score+=10;
+    if(location.indexOf('秀洲')>=0)score+=15;
+    else if(location.indexOf('嘉兴')>=0)score+=10;
+    score+=10;
+    score+=10;
+    var isHealthy=health.indexOf('健康')>=0||health.indexOf('是')>=0||health.indexOf('没有')>=0||health.indexOf('无')>=0||health.indexOf('好')>=0;
+    var hasExp=exp.length>2&&exp.indexOf('没有')<0&&exp.indexOf('无')<0;
+    if(isHealthy||hasExp)score+=15;
+  }else{
+    score=55;
+  }
+  return score;
+}
+
+function escapeHtml(text){
+  if(!text)return '-';
+  var div=document.createElement('div');
+  div.textContent=String(text);
+  return div.innerHTML;
+}
+
+function renderRecords(records){
+  if(!records||records.length===0){
+    document.getElementById('records').innerHTML='<tr><td colspan="7" class="empty">📝 暂无面试记录<br><p>面试者完成面试后将自动显示在此</p></td></tr>';
+    document.getElementById('passNum').textContent='0';
+    document.getElementById('failNum').textContent='0';
+    document.getElementById('todayNum').textContent='0';
+    document.getElementById('totalBadge').textContent='共 0 人';
+    return;
+  }
+
+  records.sort(function(a,b){
+    if(a.timestamp&&b.timestamp)return b.timestamp.localeCompare(a.timestamp);
+    return 0;
+  });
+
+  var pass=0,fail=0,today=0;
+  var todayStr=new Date().toISOString().slice(0,10);
+  var tbody=document.getElementById('records');
+  tbody.innerHTML='';
+
+  records.forEach(function(r){
+    var a=r.answers||{};
+    var name=findAnswer(a,['姓名']);
+    var contact=findAnswer(a,['联系','手机']);
+    var age=findAnswer(a,['年龄']);
+    var gender=findAnswer(a,['性别']);
+    var education=findAnswer(a,['学历']);
+    var forklift=findAnswer(a,['叉车']);
+    var score=calcScore(a);
+    if(score>=60)pass++;else fail++;
+    if(r.timestamp&&r.timestamp.startsWith(todayStr))today++;
+    var certHtml='';
+    if(forklift.indexOf('有')>=0&&r.certPhoto){
+      var safeName=escapeHtml(name);
+      certHtml='<img class="cert-thumb" src="'+r.certPhoto+'" onclick="event.stopPropagation();openModal(this.src,\''+safeName+' 的叉车证\')" title="点击查看证书">';
+    }else if(forklift.indexOf('有')>=0){
+      certHtml='<span class="tag cert">有</span>';
+    }else{
+      certHtml='<span style="color:#bdc3c7">无</span>';
+    }
+    var tr=document.createElement('tr');
+    tr.style.cursor='pointer';
+    tr.onclick=function(){showDetail(r,score);};
+    var timeHtml='-';
+    if(r.timestamp){
+      var d=new Date(r.timestamp);
+      var month=d.getMonth()+1;
+      var day=d.getDate();
+      var hh=String(d.getHours()).padStart(2,'0');
+      var mi=String(d.getMinutes()).padStart(2,'0');
+      var weekdays=['日','一','二','三','四','五','六'];
+      var wd=weekdays[d.getDay()];
+      var today0=new Date();today0.setHours(0,0,0,0);
+      var d0=new Date(d);d0.setHours(0,0,0,0);
+      var diffDays=Math.round((today0-d0)/86400000);
+      var dayLabel;
+      if(diffDays===0)dayLabel='今天';
+      else if(diffDays===1)dayLabel='昨天';
+      else if(diffDays===2)dayLabel='前天';
+      else dayLabel=month+'月'+day+'日';
+      timeHtml='<span style="color:#2c3e50;font-weight:600">'+dayLabel+'</span> <span style="color:#7f8c8d">'+hh+':'+mi+'</span><br><span style="font-size:11px;color:#bdc3c7">周'+wd+'</span>';
+    }
+    tr.innerHTML='<td><strong>'+escapeHtml(name)+'</strong></td>'+
+      '<td>'+escapeHtml(age)+'岁/'+escapeHtml(gender)+'</td>'+
+      '<td>'+escapeHtml(education)+'</td>'+
+      '<td>'+certHtml+'</td>'+
+      '<td style="font-size:12px;color:#7f8c8d">'+timeHtml+'</td>'+
+      '<td><span class="score '+(score>=60?'pass':'fail')+'">'+score+'分</span></td>'+
+      '<td><span class="score '+(score>=60?'pass':'fail')+'">'+(score>=60?'通过':'未通过')+'</span></td>';
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('passNum').textContent=pass;
+  document.getElementById('failNum').textContent=fail;
+  document.getElementById('todayNum').textContent=today;
+  document.getElementById('totalBadge').textContent='共 '+records.length+' 人';
+  var now=new Date();
+  document.getElementById('refreshInfo').textContent='上次刷新：'+now.toLocaleTimeString('zh-CN')+' · 每30秒自动刷新';
+}
+
+function loadRecords(){
+  var oldScript=document.getElementById('dataLoader');
+  if(oldScript)oldScript.parentNode.removeChild(oldScript);
+
+  var script=document.createElement('script');
+  script.id='dataLoader';
+  script.src=DATA_SCRIPT_URL+'?t='+Date.now();
+
+  script.onload=function(){
+    if(window.__RECORDS_DATA__){
+      var data=window.__RECORDS_DATA__;
+      window.__RECORDS_DATA__=undefined;
+      recordCache=data;
+      renderRecords(data);
+    }else{
+      if(recordCache.length>0){
+        document.getElementById('refreshInfo').textContent='⚠️ 数据未更新，显示缓存数据 · '+new Date().toLocaleTimeString('zh-CN');
+        renderRecords(recordCache);
+      }else{
+        document.getElementById('records').innerHTML='<tr><td colspan="7" class="empty">⚠️ 数据加载失败，请刷新重试</td></tr>';
+      }
+    }
+  };
+
+  script.onerror=function(){
+    if(recordCache.length>0){
+      document.getElementById('refreshInfo').textContent='⚠️ 网络异常，显示缓存数据 · '+new Date().toLocaleTimeString('zh-CN');
+      renderRecords(recordCache);
+    }else{
+      document.getElementById('records').innerHTML='<tr><td colspan="7" class="empty">⚠️ 网络异常，请刷新重试</td></tr>';
+      document.getElementById('refreshInfo').textContent='⚠️ 网络异常 · '+new Date().toLocaleTimeString('zh-CN');
+    }
+  };
+
+  document.head.appendChild(script);
+}
+
+function showDetail(record,score){
+  var a=record.answers||{};
+  var panel=document.getElementById('detailPanel');
+  var content=document.getElementById('detailContent');
+  var keys=getAnswerKeys(a);
+  var html='';
+  keys.forEach(function(key){
+    var item=a[key];
+    var label=getShortLabel(item?(item.question||''):'');
+    var ans=item?(item.answer||'-'):'-';
+    html+='<div class="detail-row"><div class="detail-label">'+escapeHtml(label)+'</div><div class="detail-value">'+escapeHtml(ans)+'</div></div>';
+  });
+  var forkliftAns=findAnswer(a,['叉车']);
+  if(forkliftAns.indexOf('有')>=0&&record.certPhoto){
+    html+='<div class="detail-row"><div class="detail-label">叉车证照片</div><div class="detail-value"><img src="'+record.certPhoto+'" style="max-width:300px;border-radius:8px;cursor:pointer" onclick="openModal(this.src,\'叉车证照片\')"></div></div>';
+  }
+  html+='<div style="margin-top:16px"><span class="detail-score '+(score>=60?'pass':'fail')+'">评分：'+score+'分 '+(score>=60?'✅ 通过':'❌ 未通过')+'</span></div>';
+  if(record.timestamp){
+    var d=new Date(record.timestamp);
+    html+='<div style="margin-top:8px;font-size:12px;color:#bdc3c7">面试时间：'+d.toLocaleString('zh-CN')+'</div>';
+  }
+  content.innerHTML=html;
+  panel.classList.add('show');
+  panel.scrollIntoView({behavior:'smooth'});
+}
+
+loadRecords();
+setInterval(loadRecords,30000);
+]]></script>
+</body>
+</html>

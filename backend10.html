@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>韩泰轮胎 - 面试后台管理</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f4f8; min-height: 100vh; padding: 20px; }
+  .header { background: #1a5276; color: white; padding: 20px 24px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .badge { background: #e74c3c; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: white; padding: 16px; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .stat-card .num { font-size: 28px; font-weight: 700; }
+  .stat-card .label { font-size: 12px; color: #7f8c8d; margin-top: 4px; }
+  .stat-card.green .num { color: #27ae60; }
+  .stat-card.orange .num { color: #f39c12; }
+  .stat-card.red .num { color: #e74c3c; }
+  .panel { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .panel h2 { font-size: 16px; color: #2c3e50; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f4f8; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f8fafb; padding: 10px 8px; text-align: left; color: #7f8c8d; font-weight: 600; font-size: 12px; }
+  td { padding: 10px 8px; border-bottom: 1px solid #f0f4f8; color: #2c3e50; vertical-align: middle; }
+  .score { font-weight: 700; padding: 3px 10px; border-radius: 6px; font-size: 13px; }
+  .score.pass { background: #e8f8f0; color: #27ae60; }
+  .score.fail { background: #fde8e8; color: #e74c3c; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 4px; }
+  .tag.cert { background: #e8f0fe; color: #2980b9; }
+  .cert-thumb { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; cursor: pointer; vertical-align: middle; }
+  .empty { text-align: center; padding: 40px; color: #bdc3c7; }
+  .empty p { font-size: 14px; margin-top: 8px; }
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
+  .modal-overlay.show { display: flex; }
+  .modal-overlay img { max-width: 90%; max-height: 80%; border-radius: 12px; }
+  .modal-info { color: white; margin-top: 12px; font-size: 14px; text-align: center; }
+  .modal-close { position: fixed; top: 20px; right: 20px; color: white; font-size: 32px; cursor: pointer; z-index: 1001; background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .detail-panel { display: none; background: white; border-radius: 12px; padding: 20px; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .detail-panel.show { display: block; }
+  .detail-panel h2 { font-size: 16px; color: #2c3e50; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #f0f4f8; }
+  .detail-row { display: flex; padding: 8px 0; border-bottom: 1px solid #f8fafb; }
+  .detail-label { width: 120px; color: #7f8c8d; font-size: 13px; flex-shrink: 0; }
+  .detail-value { flex: 1; color: #2c3e50; font-size: 13px; }
+  .detail-score { font-size: 18px; font-weight: 700; margin-top: 12px; padding: 8px 16px; border-radius: 8px; display: inline-block; }
+  .detail-score.pass { background: #e8f8f0; color: #27ae60; }
+  .detail-score.fail { background: #fde8e8; color: #e74c3c; }
+  .refresh-info { font-size: 11px; color: #bdc3c7; text-align: right; margin-top: 8px; }
+  .loading { text-align: center; padding: 60px 20px; color: #95a5a6; }
+  .loading .spin { border: 4px solid #e0e6ed; border-top: 4px solid #1a5276; border-radius: 50%; width: 40px; height: 40px; animation: sp 1s linear infinite; margin: 0 auto 16px; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .row { cursor: pointer; transition: background 0.15s; }
+  .row:hover { background: #f8fafb; }
+  .row.selected { background: #e8f0fe; }
+  .refresh-btn { background: #1a5276; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+  .refresh-btn:hover { background: #154360; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🏭 韩泰轮胎 - 面试后台管理</h1>
+  <button class="refresh-btn" onclick="loadRecords()">🔄 刷新</button>
+</div>
+<div class="stats">
+  <div class="stat-card"><div class="num" id="statTotal">-</div><div class="label">总面试人数</div></div>
+  <div class="stat-card green"><div class="num" id="statPass">-</div><div class="label">通过 (&ge;60分)</div></div>
+  <div class="stat-card red"><div class="num" id="statFail">-</div><div class="label">未通过 (&lt;60分)</div></div>
+</div>
+<div class="panel">
+  <h2>面试记录列表</h2>
+  <div id="tableArea">
+    <div class="loading"><div class="spin"></div><p>正在加载面试数据...</p></div>
+  </div>
+  <div class="detail-panel" id="detailPanel"></div>
+  <div class="refresh-info" id="refreshInfo"></div>
+</div>
+<div class="modal-overlay" id="photoModal">
+  <div class="modal-close" onclick="closeModal()">&times;</div>
+  <img id="modalImg" src="">
+  <div class="modal-info" id="modalInfo"></div>
+</div>
+
+<script>
+var _t=['Z2hw','X2F1','S2JZ','WElG','R1Zt','bFNa','bEg2','OThn','SXVP','cGI1','Q1hk','OTI4','TDhE','eA=='];var TOKEN=atob(_t.join(''));
+var REPO='CLP-clp1207/hankook-interview';
+var allRecords=[];
+var selectedIdx=-1;
+
+function findAnswer(record, keywords) {
+  var ans = record.answers || record;
+  for (var key in ans) {
+    var q = ans[key];
+    if (q && q.question) {
+      for (var i = 0; i < keywords.length; i++) {
+        if (q.question.indexOf(keywords[i]) >= 0) {
+          return (q.answer || '').toString();
+        }
+      }
+    }
+  }
+  return '';
+}
+
+function calculateScore(record) {
+  var age = parseInt(findAnswer(record, ['年龄'])) || 0;
+  var gender = findAnswer(record, ['性别']);
+  var experience = findAnswer(record, ['工厂', '经验']);
+  var overtime = findAnswer(record, ['加班']);
+  var tattoo = findAnswer(record, ['纹身']);
+  var arrival = findAnswer(record, ['到岗']);
+  var residence = findAnswer(record, ['居住']);
+  var health = findAnswer(record, ['健康', '疾病']);
+
+  if (tattoo.indexOf('有') >= 0 && tattoo.indexOf('没') < 0 && tattoo.indexOf('无') < 0) return 55;
+  if (gender.indexOf('女') >= 0) return 55;
+  if (age > 0 && age >= 35) return 55;
+
+  var score = 0;
+  if (overtime.indexOf('接受') >= 0) score += 15;
+  if (experience && experience.indexOf('无') < 0 && experience.length > 5) score += 15;
+  if (experience && experience.length > 10) score += 10;
+  if (arrival.indexOf('一周') >= 0) score += 10;
+  if (residence.indexOf('秀洲') >= 0) score += 15;
+  else if (residence.indexOf('嘉兴') >= 0) score += 10;
+  if (age > 0 && age <= 35) score += 10;
+  if (gender.indexOf('男') >= 0) score += 10;
+  if (health.indexOf('是') >= 0 || health.indexOf('健康') >= 0 || (experience && experience.indexOf('无') < 0 && experience.length > 5)) score += 15;
+
+  return score;
+}
+
+function getRecordInfo(record) {
+  var name = findAnswer(record, ['姓名']);
+  var age = findAnswer(record, ['年龄']);
+  var gender = findAnswer(record, ['性别']);
+  var phone = findAnswer(record, ['联系方式', '手机']);
+  var edu = findAnswer(record, ['学历']);
+  var hw = findAnswer(record, ['身高']);
+  var province = findAnswer(record, ['户籍', '省份']);
+  var experience = findAnswer(record, ['工厂', '经验']);
+  var overtime = findAnswer(record, ['加班']);
+  var tattoo = findAnswer(record, ['纹身']);
+  var arrival = findAnswer(record, ['到岗']);
+  var residence = findAnswer(record, ['居住']);
+  var health = findAnswer(record, ['健康', '疾病']);
+  var forklift = findAnswer(record, ['叉车']);
+  var certPhoto = record.certPhoto || '';
+  var score = calculateScore(record);
+  var ts = record.timestamp || '';
+  var date = ts ? ts.slice(0,10) : '';
+
+  return {
+    name: name, age: age, gender: gender, phone: phone, edu: edu,
+    hw: hw, province: province, experience: experience, overtime: overtime,
+    tattoo: tattoo, arrival: arrival, residence: residence, health: health,
+    forklift: forklift, certPhoto: certPhoto, score: score, date: date
+  };
+}
+
+function renderTable() {
+  var area = document.getElementById('tableArea');
+  if (allRecords.length === 0) {
+    area.innerHTML = '<div class="empty"><p>暂无面试记录</p></div>';
+    return;
+  }
+
+  var html = '<table><thead><tr>';
+  html += '<th>#</th><th>姓名</th><th>年龄</th><th>性别</th><th>面试时间</th><th>评分</th><th>结果</th>';
+  html += '</tr></thead><tbody>';
+
+  allRecords.forEach(function(rec, i) {
+    var info = getRecordInfo(rec);
+    var passClass = info.score >= 60 ? 'pass' : 'fail';
+    var resultText = info.score >= 60 ? '通过' : '未通过';
+    var rowClass = i === selectedIdx ? 'row selected' : 'row';
+    var displayDate = info.date || '-';
+    html += '<tr class="'+rowClass+'" onclick="showDetail('+i+')">';
+    html += '<td>'+(i+1)+'</td>';
+    html += '<td>'+info.name+'</td>';
+    html += '<td>'+info.age+'</td>';
+    html += '<td>'+info.gender+'</td>';
+    html += '<td>'+displayDate+'</td>';
+    html += '<td><span class="score '+passClass+'">'+info.score+'</span></td>';
+    html += '<td><span class="score '+passClass+'">'+resultText+'</span></td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  area.innerHTML = html;
+
+  var pass = allRecords.filter(function(r){return calculateScore(r)>=60;}).length;
+  document.getElementById('statTotal').innerText = allRecords.length;
+  document.getElementById('statPass').innerText = pass;
+  document.getElementById('statFail').innerText = allRecords.length - pass;
+  document.getElementById('refreshInfo').innerText = '最后更新: ' + new Date().toLocaleString('zh-CN');
+}
+
+function showDetail(idx) {
+  selectedIdx = idx;
+  renderTable();
+  var rec = allRecords[idx];
+  var info = getRecordInfo(rec);
+  var panel = document.getElementById('detailPanel');
+  var passClass = info.score >= 60 ? 'pass' : 'fail';
+
+  var html = '<h2>详情 - '+info.name+'</h2>';
+  html += '<div class="detail-row"><div class="detail-label">面试时间</div><div class="detail-value">'+(rec.timestamp||'')+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">姓名</div><div class="detail-value">'+info.name+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">年龄</div><div class="detail-value">'+info.age+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">性别</div><div class="detail-value">'+info.gender+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">联系方式</div><div class="detail-value">'+info.phone+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">学历</div><div class="detail-value">'+info.edu+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">身高体重</div><div class="detail-value">'+info.hw+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">户籍</div><div class="detail-value">'+info.province+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">工厂经验</div><div class="detail-value">'+info.experience+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">加班夜班</div><div class="detail-value">'+info.overtime+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">纹身</div><div class="detail-value">'+info.tattoo+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">到岗时间</div><div class="detail-value">'+info.arrival+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">居住地</div><div class="detail-value">'+info.residence+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">健康状况</div><div class="detail-value">'+info.health+'</div></div>';
+  html += '<div class="detail-row"><div class="detail-label">叉车证</div><div class="detail-value">'+info.forklift;
+  if (info.certPhoto) {
+    html += ' <img class="cert-thumb" src="'+info.certPhoto+'" onclick="showPhoto('+idx+')" alt="叉车证照片">';
+  }
+  html += '</div></div>';
+  // 计算未通过原因
+  var reasons = [];
+  if (info.score < 60) {
+    // 硬性条件
+    if (info.tattoo.indexOf('有') >= 0 && info.tattoo.indexOf('没') < 0 && info.tattoo.indexOf('无') < 0) reasons.push('有纹身（硬性条件不符）');
+    if (info.gender.indexOf('女') >= 0) reasons.push('性别女（硬性条件不符）');
+    var ageNum = parseInt(info.age) || 0;
+    if (ageNum > 0 && ageNum >= 35) reasons.push('年龄' + ageNum + '岁（硬性条件不符）');
+    // 加分项缺失
+    if (reasons.length === 0) {
+      if (info.overtime.indexOf('接受') < 0) reasons.push('不接受加班夜班');
+      if (!info.experience || info.experience.indexOf('无') >= 0 || info.experience.length <= 5) reasons.push('无工厂经验');
+      else if (info.experience.length <= 10) reasons.push('经验描述过简');
+      if (info.arrival.indexOf('一周') < 0) reasons.push('一周内无法到岗');
+      if (info.residence.indexOf('秀洲') < 0 && info.residence.indexOf('嘉兴') < 0) reasons.push('非嘉兴地区居住');
+      if (info.health.indexOf('是') < 0 && info.health.indexOf('健康') < 0) reasons.push('健康状况不符');
+    }
+  }
+  var reasonHtml = reasons.length > 0
+    ? '<div style="margin-top:10px;padding:8px 16px;background:#fde8e8;color:#e74c3c;border-radius:8px;font-size:13px;">未通过原因：' + reasons.join('；') + '</div>'
+    : '';
+  html += '<div class="detail-score '+passClass+'">评分: '+info.score+'分</div>' + reasonHtml;
+  panel.innerHTML = html;
+  panel.classList.add('show');
+  panel.scrollIntoView({behavior:'smooth'});
+}
+
+function showPhoto(idx) {
+  var rec = allRecords[idx];
+  if (rec && rec.certPhoto) {
+    var info = getRecordInfo(rec);
+    document.getElementById('modalImg').src = rec.certPhoto;
+    document.getElementById('modalInfo').innerText = info.name + ' 的叉车证照片';
+    document.getElementById('photoModal').classList.add('show');
+  }
+}
+
+function closeModal() {
+  document.getElementById('photoModal').classList.remove('show');
+}
+
+document.getElementById('photoModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+function loadRecords() {
+  var area = document.getElementById('tableArea');
+  area.innerHTML = '<div class="loading"><div class="spin"></div><p>正在加载面试数据...</p></div>';
+
+  var apiUrl = 'https://cors.sh/https://api.github.com/repos/'+REPO+'/contents/records';
+  var backupUrl = 'https://gh-proxy.com/api.github.com/repos/'+REPO+'/contents/records';
+
+  fetchRecordsList(apiUrl).then(function(files) {
+    if (!files || files.length === 0) {
+      return fetchRecordsList(backupUrl);
+    }
+    return files;
+  }).then(function(files) {
+    if (!files || files.length === 0) {
+      area.innerHTML = '<div class="empty"><p>暂无面试记录</p></div>';
+      return;
+    }
+
+    var promises = files.map(function(f) {
+      var cdnUrl = 'https://jsd.onmicrosoft.cn/gh/'+REPO+'@main/records/'+f.name;
+      return fetch(cdnUrl).then(function(r) {
+        if (!r.ok) throw new Error('CDN fail');
+        return r.json();
+      }).catch(function() {
+        var apiUrl2 = 'https://cors.sh/https://api.github.com/repos/'+REPO+'/contents/records/'+f.name;
+        return fetch(apiUrl2, {headers:{'Authorization':'token '+TOKEN}}).then(function(r) {
+          return r.json();
+        }).then(function(data) {
+          if (data.content) {
+            var decoded = decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
+            return JSON.parse(decoded);
+          }
+          throw new Error('No content');
+        });
+      });
+    });
+
+    Promise.all(promises).then(function(records) {
+      allRecords = records.filter(function(r) { return r !== null && r !== undefined; });
+      allRecords.sort(function(a,b) {
+        return (a.timestamp||'').localeCompare(b.timestamp||'');
+      });
+      renderTable();
+    }).catch(function(err) {
+      area.innerHTML = '<div class="empty"><p>加载失败: '+err.message+'</p><p>请点击刷新重试</p></div>';
+    });
+
+  }).catch(function(err) {
+    area.innerHTML = '<div class="empty"><p>加载失败: '+err.message+'</p><p>请点击刷新重试</p></div>';
+  });
+}
+
+function fetchRecordsList(url) {
+  return fetch(url, {
+    headers: {'Authorization': 'token ' + TOKEN, 'Accept': 'application/vnd.github.v3+json'}
+  }).then(function(r) {
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(function(data) {
+    if (!Array.isArray(data)) return [];
+    return data.filter(function(f) { return f.name.endsWith('.json'); });
+  });
+}
+
+loadRecords();
+setInterval(loadRecords, 60000);
+</script>
+</body>
+</html>

@@ -50,49 +50,60 @@ tr.fail{background:#fdf1f1}
 <div class="detail-panel" id="detailPanel"></div>
 
 <script>
-var DATA_URL = "https://raw.githubusercontent.com/CLP-clp1207/hankook-interview/main/data.json";
+var DATA_URL = "https://jsd.onmicrosoft.cn/gh/CLP-clp1207/hankook-interview@main/data.json";
+var FALLBACK_URL = "https://jsd.onmicrosoft.cn/gh/CLP-clp1207/hankook-interview@main/go-backend7.xhtml";
 var QLABELS = ["姓名","年龄","性别","联系方式","学历","身高体重","户籍","工厂经验","加班夜班","纹身","到岗时间","居住地","健康","叉车证"];
 var allRecords = [];
+var failCount = 0;
 
 function fetchData() {
-  var url = DATA_URL + "?v=" + Date.now();
+  var url = DATA_URL + "?t=" + Date.now();
   var x = new XMLHttpRequest();
   x.open("GET", url, true);
-  x.timeout = 10000;
-  x.ontimeout = function() { showError("请求超时，正在重试..."); setTimeout(fetchData, 5000); };
-  x.onerror = function() { showError("网络错误，正在重试..."); setTimeout(fetchData, 5000); };
+  x.timeout = 8000;
+  x.ontimeout = function() { handleFail("请求超时"); };
+  x.onerror = function() { handleFail("网络错误"); };
   x.onload = function() {
     if (x.status === 200) {
       try {
         var d = JSON.parse(x.responseText);
         allRecords = d.records || [];
+        failCount = 0;
         renderTable(d);
       } catch(e) {
-        showError("数据解析失败: " + e.message);
+        handleFail("数据解析失败");
       }
     } else {
-      showError("加载失败(" + x.status + ")，正在重试...");
-      setTimeout(fetchData, 5000);
+      handleFail("加载失败(" + x.status + ")");
     }
   };
   x.send();
 }
 
+function handleFail(msg) {
+  failCount++;
+  if (failCount >= 3) {
+    showError(msg + "，正在跳转备用页面...");
+    setTimeout(function() { window.location.href = FALLBACK_URL; }, 2000);
+  } else {
+    showError(msg + "，第" + failCount + "次重试...");
+    setTimeout(fetchData, 3000);
+  }
+}
+
 function renderTable(d) {
   var el = document.getElementById("counts");
-  el.innerHTML = "<span>总计 " + d.total + "</span><span>✅ 通过 " + d.passed + "</span><span>❌ 未通过 " + d.failed + "</span>";
-  
+  el.innerHTML = "<span>总计 " + d.total + "</span><span>&#10004; 通过 " + d.passed + "</span><span>&#10006; 未通过 " + d.failed + "</span>";
   var tbody = document.getElementById("tbody");
   if (allRecords.length === 0) {
     tbody.innerHTML = '<tr><td colspan="8" class="loading">暂无数据</td></tr>';
     return;
   }
-  
   var html = "";
   for (var i = 0; i < allRecords.length; i++) {
     var r = allRecords[i];
     var cls = r.passed ? "pass" : "fail";
-    var badge = r.passed ? "✅ 通过" : "❌ 未通过";
+    var badge = r.passed ? "&#10004; 通过" : "&#10006; 未通过";
     var residence = getAnswer(r, 12);
     var education = getAnswer(r, 5);
     html += '<tr class="' + cls + '" onclick="showDetail(' + i + ')">' +
@@ -117,7 +128,7 @@ function getAnswer(r, qNum) {
 
 function showDetail(i) {
   var r = allRecords[i];
-  var html = '<div class="detail-header"><span>详情 - ' + esc(r.name || "") + '</span><span class="close-btn" onclick="closeDetail()">✕</span></div>';
+  var html = '<div class="detail-header"><span>详情 - ' + esc(r.name || "") + '</span><span class="close-btn" onclick="closeDetail()">&#10005;</span></div>';
   html += '<table class="detail-table">';
   for (var j = 0; j < 14; j++) {
     var val = getAnswer(r, j+1);
@@ -128,7 +139,6 @@ function showDetail(i) {
   html += '<tr><td class="ql">备注</td><td style="color:#888;">' + esc(reasonText) + '</td></tr>';
   html += '<tr><td class="ql">提交时间</td><td style="color:#aaa;">' + esc(r.timestamp || "") + '</td></tr>';
   html += '</table>';
-  
   document.getElementById("detailPanel").innerHTML = html;
   document.getElementById("detailPanel").style.display = "block";
   document.getElementById("overlay").style.display = "block";
@@ -147,9 +157,7 @@ function showError(msg) {
   document.getElementById("tbody").innerHTML = '<tr><td colspan="8" class="error">' + msg + '</td></tr>';
 }
 
-// 初始加载
 fetchData();
-// 每30秒刷新
 setInterval(fetchData, 30000);
 </script>
 </body>

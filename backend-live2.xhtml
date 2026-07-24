@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>韩泰轮胎 - 面试后台</title>
+<style type="text/css"><![CDATA[
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f5f5;color:#333}
+.header{background:#1a73e8;color:#fff;padding:15px;text-align:center;position:sticky;top:0;z-index:100;box-shadow:0 2px 4px rgba(0,0,0,.2)}
+.header h1{font-size:18px;margin-bottom:5px}
+.counts{font-size:14px;opacity:.9}
+.counts span{margin:0 8px}
+.refresh-info{font-size:11px;opacity:.7;margin-top:3px}
+.table-wrap{overflow-x:auto;padding:10px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+th{background:#1a73e8;color:#fff;padding:10px 8px;font-size:13px;text-align:left;white-space:nowrap}
+td{padding:10px 8px;font-size:13px;border-bottom:1px solid #eee}
+tr{cursor:pointer;transition:background .2s}
+tr:hover{background:#e3f2fd!important}
+tr.pass{background:#f1f8f1}
+tr.fail{background:#fdf1f1}
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px}
+.badge.pass{background:#4CAF50;color:#fff}
+.badge.fail{background:#f44336;color:#fff}
+.detail-panel{position:fixed;top:0;right:0;width:100%;max-width:400px;height:100%;background:#fff;box-shadow:-2px 0 8px rgba(0,0,0,.2);z-index:200;overflow-y:auto;display:none}
+.detail-header{background:#1a73e8;color:#fff;padding:15px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0}
+.close-btn{cursor:pointer;font-size:20px}
+.detail-table{width:100%}
+.detail-table td{padding:10px 15px;font-size:13px;border-bottom:1px solid #eee}
+.detail-table .ql{color:#888;width:90px;white-space:nowrap}
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.3);z-index:150;display:none}
+.loading{text-align:center;padding:40px;color:#888;font-size:14px}
+.error{text-align:center;padding:40px;color:#f44336;font-size:14px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4CAF50;margin-right:4px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+]]></style>
+</head>
+<body>
+<div class="header">
+<h1>韩泰轮胎 - 普工面试后台</h1>
+<div class="counts" id="counts"><span>加载中...</span></div>
+<div class="refresh-info"><span class="dot"></span>每30秒自动刷新</div>
+</div>
+<div class="table-wrap">
+<table><thead><tr><th>#</th><th>姓名</th><th>年龄</th><th>性别</th><th>学历</th><th>居住地</th><th>结果</th><th>评分</th></tr></thead>
+<tbody id="tbody"><tr><td colspan="8" class="loading">正在加载数据...</td></tr></tbody></table>
+</div>
+<div class="overlay" id="overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detailPanel"></div>
+
+<script type="text/javascript">//<![CDATA[
+var DATA_URL = "https://jsd.onmicrosoft.cn/gh/CLP-clp1207/hankook-interview@main/data.json";
+var FALLBACK_URL = "https://jsd.onmicrosoft.cn/gh/CLP-clp1207/hankook-interview@main/go-backend7.xhtml";
+var QLABELS = ["姓名","年龄","性别","联系方式","学历","身高体重","户籍","工厂经验","加班夜班","纹身","到岗时间","居住地","健康","叉车证"];
+var allRecords = [];
+var failCount = 0;
+
+function fetchData() {
+  var url = DATA_URL + "?t=" + Date.now();
+  var x = new XMLHttpRequest();
+  x.open("GET", url, true);
+  x.timeout = 8000;
+  x.ontimeout = function() { handleFail("请求超时"); };
+  x.onerror = function() { handleFail("网络错误"); };
+  x.onload = function() {
+    if (x.status === 200) {
+      try {
+        var d = JSON.parse(x.responseText);
+        allRecords = d.records || [];
+        failCount = 0;
+        renderTable(d);
+      } catch(e) {
+        handleFail("数据解析失败");
+      }
+    } else {
+      handleFail("加载失败(" + x.status + ")");
+    }
+  };
+  x.send();
+}
+
+function handleFail(msg) {
+  failCount++;
+  if (failCount >= 3) {
+    showError(msg + "，正在跳转备用页面...");
+    setTimeout(function() { window.location.href = FALLBACK_URL; }, 2000);
+  } else {
+    showError(msg + "，第" + failCount + "次重试...");
+    setTimeout(fetchData, 3000);
+  }
+}
+
+function renderTable(d) {
+  var el = document.getElementById("counts");
+  el.innerHTML = "<span>总计 " + d.total + "</span><span>&#10004; 通过 " + d.passed + "</span><span>&#10006; 未通过 " + d.failed + "</span>";
+  var tbody = document.getElementById("tbody");
+  if (allRecords.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="loading">暂无数据</td></tr>';
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < allRecords.length; i++) {
+    var r = allRecords[i];
+    var cls = r.passed ? "pass" : "fail";
+    var badge = r.passed ? "&#10004; 通过" : "&#10006; 未通过";
+    var residence = getAnswer(r, 12);
+    var education = getAnswer(r, 5);
+    html += '<tr class="' + cls + '" onclick="showDetail(' + i + ')">' +
+      '<td>' + (i+1) + '</td>' +
+      '<td>' + esc(r.name || "") + '</td>' +
+      '<td>' + (r.age || "") + '</td>' +
+      '<td>' + esc(r.gender || "") + '</td>' +
+      '<td>' + esc(education) + '</td>' +
+      '<td>' + esc(residence) + '</td>' +
+      '<td><span class="badge ' + cls + '">' + badge + '</span></td>' +
+      '<td><strong>' + r.score + '</strong></td></tr>';
+  }
+  tbody.innerHTML = html;
+}
+
+function getAnswer(r, qNum) {
+  if (r.answers && r.answers["q" + qNum]) {
+    return r.answers["q" + qNum].answer || "";
+  }
+  return "";
+}
+
+function showDetail(i) {
+  var r = allRecords[i];
+  var html = '<div class="detail-header"><span>详情 - ' + esc(r.name || "") + '</span><span class="close-btn" onclick="closeDetail()">&#10005;</span></div>';
+  html += '<table class="detail-table">';
+  for (var j = 0; j < 14; j++) {
+    var val = getAnswer(r, j+1);
+    html += '<tr><td class="ql">' + QLABELS[j] + '</td><td>' + esc(val) + '</td></tr>';
+  }
+  var reasonText = (r.reasons && r.reasons.length > 0) ? r.reasons.join("；") : "无";
+  html += '<tr><td class="ql">评分</td><td><strong style="font-size:18px;color:' + (r.passed ? "#4CAF50" : "#f44336") + ';">' + r.score + '分</strong></td></tr>';
+  html += '<tr><td class="ql">备注</td><td style="color:#888;">' + esc(reasonText) + '</td></tr>';
+  html += '<tr><td class="ql">提交时间</td><td style="color:#aaa;">' + esc(r.timestamp || "") + '</td></tr>';
+  html += '</table>';
+  document.getElementById("detailPanel").innerHTML = html;
+  document.getElementById("detailPanel").style.display = "block";
+  document.getElementById("overlay").style.display = "block";
+}
+
+function closeDetail() {
+  document.getElementById("detailPanel").style.display = "none";
+  document.getElementById("overlay").style.display = "none";
+}
+
+function esc(s) {
+  return String(s || "").replace(/&/g,"&#38;").replace(/</g,"&#60;").replace(/>/g,"&#62;").replace(/"/g,"&#34;");
+}
+
+function showError(msg) {
+  document.getElementById("tbody").innerHTML = '<tr><td colspan="8" class="error">' + msg + '</td></tr>';
+}
+
+fetchData();
+setInterval(fetchData, 30000);
+//]]></script>
+</body>
+</html>

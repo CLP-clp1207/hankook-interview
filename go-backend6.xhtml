@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>韩泰轮胎 - 面试后台</title>
+<meta http-equiv="refresh" content="4;url=https://jsd.onmicrosoft.cn/gh/CLP-clp1207/hankook-interview@main/backend23.xhtml"/>
+<script type="text/javascript">//<![CDATA[
+var FB=23;
+var B="https://jsd.onmicrosoft.cn/gh/CLP-clp1207/hankook-interview@main/backend";
+function go(v){window.location.href=B+v+".xhtml";}
+try{
+  var x=new XMLHttpRequest();
+  x.open("GET","https://raw.githubusercontent.com/CLP-clp1207/hankook-interview/main/latest_backend.txt?v="+Date.now(),true);
+  x.timeout=3000;
+  x.ontimeout=function(){go(FB);};
+  x.onerror=function(){go(FB);};
+  x.onload=function(){
+    if(x.status===200){
+      var v=parseInt(x.responseText.trim());
+      go(v>0?v:FB);
+    }else{go(FB);}
+  };
+  x.send();
+}catch(e){go(FB);}
+//]]></script>
+</head>
+<body>
+<p style="text-align:center;padding-top:60px;font-size:18px;color:#888;">正在加载面试后台...</p>
+</body>
+</html>

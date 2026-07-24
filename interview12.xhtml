@@ -62,9 +62,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
     <div id="uploadPreview" style="display:none">
       <img class="preview-img" id="previewImg" src="" alt="preview"/>
     </div>
-    <button class="choice-btn" style="margin-top:10px;background:#27ae60;color:white;border-color:#27ae60" onclick="submitForkliftPhoto()">&#9989; 提交</button>
   </div>
-  <a class="submit-btn-final" id="finalSubmitLink" href="#" style="display:none;text-decoration:none;text-align:center">&#9989; 点击提交面试结果</a>
 </div>
 <script type="text/javascript">//<![CDATA[
 var TOTAL=14;
@@ -80,7 +78,7 @@ var questions=[
   {text:"您能接受加班和夜班吗？我们的工作需要三班三倒。",type:"choice",options:["能接受","不能接受"]},
   {text:"请问身上有纹身吗？",type:"choice",options:["无","有"]},
   {text:"请问您预计什么时候能到岗？",type:"choice",options:["一周内","两周内","一个月内","一个月以上"]},
-  {text:"请问您现在的居住地是？",type:"choice",options:["嘉兴秀洲区","嘉兴其他区域","外地"]},
+  {text:"现在居住地",type:"choice",options:["1嘉兴市秀洲区","2嘉兴市","3嘉兴以外"]},
   {text:"请问身体是否健康，无重大疾病？",type:"choice",options:["健康","不健康","其他请说明"]},
   {text:"请问您有无叉车证书？",type:"forklift"}
 ];
@@ -192,7 +190,7 @@ function showForkliftUpload(){
   document.getElementById('choiceArea').style.display='none';
   document.getElementById('uploadArea').style.display='block';
   document.getElementById('uploadPreview').style.display='none';
-  document.getElementById('fileName').textContent='';
+  document.getElementById('fileName').textContent='请上传叉车证照片，上传后自动提交';
   certPhoto='';
 }
 function renderHeightWeight(){
@@ -259,6 +257,8 @@ function handleUpload(input){
       certPhoto=compressed;
       document.getElementById('previewImg').src=compressed;
       document.getElementById('uploadPreview').style.display='block';
+      document.getElementById('fileName').textContent='已上传，正在自动提交...';
+      setTimeout(function(){submitForkliftPhoto();},1500);
     });
   };
   reader.readAsDataURL(file);
@@ -305,11 +305,6 @@ function finishInterview(){
   }catch(e){}
   
   setTimeout(function(){
-    var link=document.getElementById('finalSubmitLink');
-    if(link){
-      link.href=submitUrl;
-      link.style.display='block';
-    }
     showSuccess();
   },2000);
 }

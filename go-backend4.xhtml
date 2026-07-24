@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>韩泰轮胎 - 面试后台</title>
+<meta http-equiv="refresh" content="8;url=https://jsd.onmicrosoft.cn/gh/CLP-clp1207/hankook-interview@main/backend22.xhtml"/>
+<script type="text/javascript">//<![CDATA[
+var FALLBACK_VER=22;
+var CDN_BASE="https://jsd.onmicrosoft.cn/gh/CLP-clp1207/hankook-interview@main/backend";
+
+function go(v){
+  window.location.href=CDN_BASE+v+".xhtml";
+}
+
+try{
+  var xhr=new XMLHttpRequest();
+  xhr.open("GET","https://raw.githubusercontent.com/CLP-clp1207/hankook-interview/main/latest_backend.txt?v="+Date.now(),true);
+  xhr.timeout=5000;
+  xhr.ontimeout=function(){go(FALLBACK_VER);};
+  xhr.onerror=function(){go(FALLBACK_VER);};
+  xhr.onload=function(){
+    if(xhr.status===200){
+      var v=parseInt(xhr.responseText.trim());
+      if(v>0){go(v);}else{go(FALLBACK_VER);}
+    }else{
+      go(FALLBACK_VER);
+    }
+  };
+  xhr.send();
+}catch(e){
+  go(FALLBACK_VER);
+}
+//]]></script>
+</head>
+<body>
+<p style="text-align:center;padding-top:60px;font-size:18px;color:#888;">正在加载面试后台...</p>
+</body>
+</html>

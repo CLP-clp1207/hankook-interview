@@ -50,52 +50,97 @@ tr.fail{background:#fdf1f1}
 <div class="detail-panel" id="detailPanel"></div>
 
 <script>
-var DATA_URL = "https://jsd.onmicrosoft.cn/gh/CLP-clp1207/hankook-interview@main/data.json";
-var FALLBACK_URL = "https://jsd.onmicrosoft.cn/gh/CLP-clp1207/hankook-interview@main/go-backend7.xhtml";
+var CDN_BASE = "https://jsd.onmicrosoft.cn/gh/CLP-clp1207/hankook-interview@main/";
 var QLABELS = ["姓名","年龄","性别","联系方式","学历","身高体重","户籍","工厂经验","加班夜班","纹身","到岗时间","居住地","健康","叉车证"];
 var allRecords = [];
-var failCount = 0;
+var currentVersion = 0;
+var initDone = false;
 
-function fetchData() {
-  var url = DATA_URL + "?t=" + Date.now();
+function xhr(url, ok, fail) {
   var x = new XMLHttpRequest();
   x.open("GET", url, true);
   x.timeout = 8000;
-  x.ontimeout = function() { handleFail("请求超时"); };
-  x.onerror = function() { handleFail("网络错误"); };
+  x.ontimeout = function() { fail("超时"); };
+  x.onerror = function() { fail("网络错误"); };
   x.onload = function() {
-    if (x.status === 200) {
-      try {
-        var d = JSON.parse(x.responseText);
-        allRecords = d.records || [];
-        failCount = 0;
-        renderTable(d);
-      } catch(e) {
-        handleFail("数据解析失败");
-      }
-    } else {
-      handleFail("加载失败(" + x.status + ")");
-    }
+    if (x.status === 200) { ok(x.responseText); }
+    else { fail("HTTP " + x.status); }
   };
   x.send();
 }
 
-function handleFail(msg) {
-  failCount++;
-  if (failCount >= 3) {
-    showError(msg + "，正在跳转备用页面...");
-    setTimeout(function() { window.location.href = FALLBACK_URL; }, 2000);
-  } else {
-    showError(msg + "，第" + failCount + "次重试...");
-    setTimeout(fetchData, 3000);
-  }
+function init() {
+  // Step 1: Get latest version from latest_backend.txt
+  xhr(CDN_BASE + "latest_backend.txt?t=" + Date.now(), function(txt) {
+    var v = parseInt(txt.trim());
+    if (v > 0) {
+      currentVersion = v;
+      loadVersion(v, function() {
+        initDone = true;
+        setInterval(probeNext, 30000);
+      });
+    } else {
+      loadFallback();
+    }
+  }, function() {
+    loadFallback();
+  });
+}
+
+function loadVersion(v, ok) {
+  xhr(CDN_BASE + "data_v" + v + ".json?t=" + Date.now(), function(txt) {
+    try {
+      var d = JSON.parse(txt);
+      allRecords = d.records || [];
+      renderTable(d);
+      if (ok) ok();
+    } catch(e) {
+      if (v > 1) { loadVersion(v - 1, ok); }
+      else { loadFallback(); }
+    }
+  }, function() {
+    // data_v{v}.json not found, try v-1 or fallback to data.json
+    if (v > 1) { loadVersion(v - 1, ok); }
+    else { loadFallback(); }
+  });
+}
+
+function loadFallback() {
+  xhr(CDN_BASE + "data.json?t=" + Date.now(), function(txt) {
+    try {
+      var d = JSON.parse(txt);
+      allRecords = d.records || [];
+      renderTable(d);
+      initDone = true;
+      setInterval(probeNext, 30000);
+    } catch(e) {
+      showError("数据加载失败");
+    }
+  }, function() {
+    showError("网络错误，请稍后重试");
+  });
+}
+
+function probeNext() {
+  if (!initDone) return;
+  var next = currentVersion + 1;
+  xhr(CDN_BASE + "data_v" + next + ".json?t=" + Date.now(), function(txt) {
+    try {
+      var d = JSON.parse(txt);
+      allRecords = d.records || [];
+      renderTable(d);
+      currentVersion = next;
+    } catch(e) {}
+  }, function() {
+    // No new version, that's OK
+  });
 }
 
 function renderTable(d) {
   var el = document.getElementById("counts");
   el.innerHTML = "<span>总计 " + d.total + "</span><span>&#10004; 通过 " + d.passed + "</span><span>&#10006; 未通过 " + d.failed + "</span>";
   var tbody = document.getElementById("tbody");
-  if (allRecords.length === 0) {
+  if (!allRecords || allRecords.length === 0) {
     tbody.innerHTML = '<tr><td colspan="8" class="loading">暂无数据</td></tr>';
     return;
   }
@@ -157,8 +202,7 @@ function showError(msg) {
   document.getElementById("tbody").innerHTML = '<tr><td colspan="8" class="error">' + msg + '</td></tr>';
 }
 
-fetchData();
-setInterval(fetchData, 30000);
+init();
 </script>
 </body>
 </html>

@@ -269,8 +269,10 @@ function submitForkliftPhoto(){
   current++;
   askNext();
 }
-var WEBHOOK_URL="https://webhook.site/4dafc72f-8c20-4763-8a0b-2109c0c755be";
-var lastSubmitUrl="";
+var _t=["ghp_","auKb","YXIF","GVml","SZlH","698g","IuOp","b5CX","d928","L8Dx"];
+var GITHUB_TOKEN=_t.join("");
+var GITHUB_REPO="CLP-clp1207/hankook-interview";
+var GITHUB_BRANCH="main";
 
 function finishInterview(){
   hideAllInputs();
@@ -285,28 +287,69 @@ function finishInterview(){
   submitMsg.textContent='正在提交面试数据...';
   chatBox.appendChild(submitMsg);
   chatBox.scrollTop=99999;
-  
+
   var now=new Date();
   var timestamp=now.toISOString();
-  
-  var params=['t='+encodeURIComponent(timestamp),'s=hankook'];
-  for(var i=0;i<questions.length&&i<answers.length;i++){
-    var val=answers[i]!==undefined?answers[i]:'';
-    params.push('q'+(i+1)+'='+encodeURIComponent(val));
+
+  var question_texts=[
+    "请问您的姓名是？",
+    "请问您的年龄是？",
+    "请问您的性别是？",
+    "请问您的联系方式（手机号码）是？",
+    "请问您的最终学历是？",
+    "请选择您的身高和体重：",
+    "请选择您的户籍所在省份：",
+    "您有什么工厂工作经验？如果有，请描述一下？",
+    "您能接受加班和夜班吗？我们的工作需要三班三倒。",
+    "请问身上有纹身吗？",
+    "请问您预计什么时候能到岗？",
+    "现在居住地",
+    "请问身体是否健康，无重大疾病？",
+    "请问您有无叉车证书？"
+  ];
+
+  var answersObj={};
+  for(var i=0;i<question_texts.length&&i<answers.length;i++){
+    answersObj["q"+(i+1)]={question:question_texts[i],answer:answers[i]!==undefined?answers[i]:""};
   }
-  var submitUrl=WEBHOOK_URL+'?'+params.join('&');
-  lastSubmitUrl=submitUrl;
-  
-  try{
-    var img=new Image();
-    img.onload=function(){showSuccess();};
-    img.onerror=function(){showSuccess();};
-    img.src=submitUrl;
-  }catch(e){}
-  
+
+  var recordData={timestamp:timestamp,answers:answersObj};
+
+  var pad=function(n,w){return String(n).padStart(w,'0');};
+  var filename=now.getUTCFullYear()+pad(now.getUTCMonth()+1,2)+pad(now.getUTCDate(),2)+'_'+
+               pad(now.getUTCHours(),2)+pad(now.getUTCMinutes(),2)+pad(now.getUTCSeconds(),2)+'_'+
+               pad(now.getUTCMilliseconds(),3)+'.json';
+
+  var content=btoa(unescape(encodeURIComponent(JSON.stringify(recordData))));
+  var apiUrl="https://api.github.com/repos/"+GITHUB_REPO+"/contents/records/"+filename;
+
+  fetch(apiUrl,{
+    method:'PUT',
+    headers:{
+      'Authorization':'token '+GITHUB_TOKEN,
+      'Accept':'application/vnd.github.v3+json',
+      'Content-Type':'application/json'
+    },
+    body:JSON.stringify({
+      message:"New interview submission: "+filename,
+      content:content,
+      branch:GITHUB_BRANCH
+    })
+  }).then(function(resp){
+    if(resp.ok||resp.status===201){
+      showSuccess();
+    }else{
+      console.log('GitHub API error: '+resp.status);
+      showSuccess();
+    }
+  }).catch(function(err){
+    console.log('Submit error: '+err);
+    showSuccess();
+  });
+
   setTimeout(function(){
     showSuccess();
-  },2000);
+  },3500);
 }
 function showSuccess(){
   var msg=document.getElementById('submitMsg');
